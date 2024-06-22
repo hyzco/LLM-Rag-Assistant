@@ -1,0 +1,4 @@
+{
+"watch": ["src/*", "node_modules/**/*"],
+"exec": "tsx ./src/chat.RAG.ts --env=development"
+}
