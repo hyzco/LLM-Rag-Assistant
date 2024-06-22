@@ -17,8 +17,36 @@ export default class CassandraVectorDatabase implements VectorDatabaseProvider {
     },
   });
 
-  constructor(config: any) {
-    this.config = config;
+  constructor() {
+    const configConnection = {
+      serviceProviderArgs: {
+        astra: {
+          endpoint: process.env.CASSANDRA_HOST,
+          clientId: process.env.CASSANDRA_CLIENT_ID,
+          secret: process.env.CASSANDRA_SECRET,
+          token: process.env.CASSANDRA_TOKEN,
+        },
+      },
+    };
+    this.config = {
+      ...configConnection,
+      keyspace: "eva_chat",
+      dimensions: 4096,
+      table: "test6",
+      indices: [{ name: "title", value: "(title)" }],
+      primaryKey: {
+        name: "id",
+        type: "int",
+      },
+      metadataColumns: [
+        {
+          name: "title",
+          type: "text",
+        },
+      ],
+      maxConcurrency: 25,
+      // batchSize: 1,
+    };
   }
 
   //TODO remove unused
@@ -54,7 +82,6 @@ export default class CassandraVectorDatabase implements VectorDatabaseProvider {
     jsonDocument: Record<string, any>
   ): Promise<Boolean> {
     try {
-      
       const metadata = {
         id: Math.floor(Math.random() * 1000000), // Adjust 1000000 based on your needs
         title: jsonDocument.title,
@@ -63,7 +90,7 @@ export default class CassandraVectorDatabase implements VectorDatabaseProvider {
         pageContent: JSON.stringify(jsonDocument),
         metadata,
       });
-      
+
       return await this.insertDocument(document);
     } catch (error) {
       console.log(error);
