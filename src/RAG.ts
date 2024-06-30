@@ -97,15 +97,16 @@ export default class RAG {
 
   /**
    * Evaluate JSON data and provide a short outcome based on its contents.
-   * @param userInput JSON input string
+   * @param data JSON input string
    * @returns Promise<string> Evaluated outcome
    */
-  protected async jsonEvaluator(userInput: string): Promise<string> {
-    const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a short evaluation of the data, nothing else. Please, use the user input as the base information, don't interfere with the data.`;
+  protected async jsonEvaluator(data: string, question?: string): Promise<string> {
+    const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your respnose.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
       new SystemMessage(promptText),
-      new HumanMessage(`User input JSON: ${userInput}.`),
+      new AIMessage(`Data: ${data}.`),
+      new HumanMessage(`Question: ${question}`)
     ]);
 
     const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
