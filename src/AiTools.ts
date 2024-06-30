@@ -69,7 +69,7 @@ export default class AiTools extends Tools {
     const tool: ITool = {
       toolName: "weather_tool",
       toolDescription:
-        "Provides current weather information for a given location.",
+        "Provides current weather information for a given location. If there is secondary location mentioned, checks if chat history contains the information.",
       toolArgs: { location: "" },
     };
 

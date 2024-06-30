@@ -16,13 +16,14 @@
     "@langchain/core": "^0.2.0",
     "axios": "^1.6.8",
     "cassandra-driver": "^4.7.2",
-    "cheerio": "1.0.0-rc.12",
     "dotenv": "^16.4.5",
     "langchain": "^0.2.0",
-    "uuidv4": "^6.2.13"
+    "uuidv4": "^6.2.13",
+    "ws": "^8.17.1"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.7",
+    "@types/ws": "^8.5.10",
     "inquirer": "^9.2.23",
     "nodemon": "^3.1.2",
     "tsx": "^4.11.0",
