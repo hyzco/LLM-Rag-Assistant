@@ -34,7 +34,7 @@ export default class CassandraVectorDatabase {
           token: process.env.CASSANDRA_TOKEN,
         },
       },
-      keyspace: "eva_chat",
+      keyspace: CassandraClient.keySpace,
       dimensions: 4096,
       table: "test6",
       indices: [{ name: "title", value: "(title)" }],
