@@ -14,7 +14,7 @@
     // "strict": true,
     // "forceConsistentCasingInFileNames": true,
     // "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Bundler",
     // "resolveJsonModule": true,
     // "isolatedModules": true,
     // "noEmit": true,
