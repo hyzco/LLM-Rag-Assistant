@@ -1,4 +1,5 @@
 node_modules
 .env.development
 config/secure-connect-eva-chat.zip
-pnpm-lock.yaml
+src/pnpm-lock.yaml
+src/config/secure-connect-eva-chat.zip
