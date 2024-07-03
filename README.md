@@ -1,31 +1,115 @@
 # LLM-Rag-Application
 
-Simple implementation of Langchain on Ollama, AI tools(like OpenAI tools but different :P), vector store, socket server !
+A robust implementation of Langchain using Ollama, AI tools, a vector store, and a socket server!
 
-## Running locally
+## Overview
 
-1. Clone the repo and install dependencies:
+The LLM-Rag-Application leverages the power of Langchain to provide functionalities such as chatting with LLMs, getting real-time weather information, taking notes, and retrieving them from a Cassandra vector store. The application also includes a socket server for real-time interactions.
 
-    ```bash
-    git clone https://github.com/hyzco/LLM-Rag-Application.git
-    cd LLM-Rag-Application
-    npm install
-    ```
-2. Rename .env.development.example to .env.development
-   Using https://astra.datastax.com/ for free Cassandra Vector DB host
-   Using https://www.weatherapi.com/ for free Weather API.
-   
-3. Run the development server:
+## Features
 
-    ```bash
-    npm run start
-    ```
-    > Firefox users need to change the `dom.workers.modules.enabled` setting in `about:config` to `true` to enable Web Workers.
-    > Check out [this issue](https://github.com/xenova/whisper-web/issues/8) for more details.
+- **LLM Chat**: Engage in conversations with the LLM.
+- **Real-time Weather Information**: Fetch weather data based on location.
+- **Note Management**: Take and store notes in a Cassandra vector store.
+- **Socket Server**: Real-time interaction capability with the frontend.
 
-4. Socket server will run on ws://localhost:8080
-   This important, [Front End](https://github.com/hyzco/TTS-Assistant/) using it.
+## Prerequisites
 
-## Running backend RAG application, to be able to chat with LLM, get real time weather information by given location, taking notes, and retrieving it from the Cassandra vector store.
-Check out repo for UI with TTS feature: 
-https://github.com/hyzco/TTS-Assistant/
+- Node.js and npm installed.
+- Access to [astra.datastax.com](https://astra.datastax.com/) for a free Cassandra Vector DB host.
+- Access to [WeatherAPI](https://www.weatherapi.com/) for a free Weather API key.
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/hyzco/LLM-Rag-Application.git
+cd LLM-Rag-Application
+```
+### 2. Install Dependencies
+```bash
+npm install
+```
+### 3. Configure Environment Variables
+Rename `.env.development.example` to `.env.development` and update it with your credentials and API keys.
+
+### 4. Run the Development Server
+```bash
+npm run start
+```
+### 5. Socket Server
+The socket server will run on `ws://localhost:8080`. This is crucial as the frontend relies on it.
+
+Frontend
+Check out the TTS-Assistant repository for a UI with TTS (Text-To-Speech) features.
+
+Usage
+Running the backend RAG application enables you to:
+
+- Chat with the LLM.
+- Fetch real-time weather information based on the provided location.
+- Manage notes and store them in the Cassandra vector store.
+
+## Setting Up
+
+### 1. Obtain API Keys and Credentials
+- Sign up at [WeatherAPI](https://www.weatherapi.com/) to get the `WEATHER_API_KEY`.
+- Register at [astra.datastax.com](https://astra.datastax.com/) to get the `CASSANDRA_CLIENT_ID`, `CASSANDRA_SECRET`, `CASSANDRA_TOKEN`, `ASTRA_DB_UNAME`, and `ASTRA_DB_PW`.
+
+### 2. Update `.env.development` File
+- Rename `.env.development.example` to `.env.development`.
+- Fill in the variables with the appropriate values obtained from the steps above.
+
+
+### Explanation of environment variables
+
+#### WEATHER_API_ENDPOINT
+- **Description**: The base URL for the WeatherAPI service.
+- **Example**: `https://api.weatherapi.com/v1/`
+- **Usage**: This URL is used as the endpoint to fetch weather data.
+
+#### WEATHER_API_KEY
+- **Description**: The API key for accessing the WeatherAPI service.
+- **Usage**: This key is required for authenticating requests to the WeatherAPI service.
+
+#### OLLAMA_HOST
+- **Description**: The base URL for the Ollama service.
+- **Example**: `http://192.168.1.17:11434`
+- **Usage**: This URL is used to access the Ollama service for embeddings and other AI functionalities.
+
+#### DEFAULT_MODEL
+- **Description**: The default model name for the Ollama embeddings.
+- **Example**: `llama3`
+- **Usage**: Specifies which model to use for generating embeddings.
+
+#### CASSANDRA_HOST
+- **Description**: The endpoint for the Cassandra database host.
+- **Usage**: Used to connect to the Cassandra database service.
+
+#### CASSANDRA_CLIENT_ID
+- **Description**: The client ID for authenticating with the Cassandra database.
+- **Usage**: Required for authentication with the Cassandra service.
+
+#### CASSANDRA_SECRET
+- **Description**: The secret key for authenticating with the Cassandra database.
+- **Usage**: Used in conjunction with the client ID to authenticate with the Cassandra service.
+
+#### CASSANDRA_TOKEN
+- **Description**: The token for accessing the Cassandra database.
+- **Usage**: An additional layer of authentication for accessing the Cassandra service.
+
+#### ASTRA_DB_UNAME
+- **Description**: The username for accessing the Astra DB.
+- **Usage**: Used for authenticating with the Astra DB service.
+
+#### ASTRA_DB_PW
+- **Description**: The password for accessing the Astra DB.
+- **Usage**: Used in conjunction with the username to authenticate with the Astra DB service.
+
+
+## Contributing
+Feel free to fork the repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
+
+### License
+This project is licensed under the MIT License.
