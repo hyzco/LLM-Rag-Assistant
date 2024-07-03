@@ -9,6 +9,7 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import AiTools, { ITool } from "./AiTools.js";
 import CassandraVectorDatabase from "./database/CassandraVectorDatabase.js";
 import NoteManagementPlugin from "./plugins/NoteManagement.plugin.js";
+import { CassandraClient } from "./database/CassandraClient.js";
 
 export default class RAG {
   protected chatModel: ChatOllama;
@@ -19,13 +20,21 @@ export default class RAG {
   protected noteManagementPlugin: NoteManagementPlugin;
 
   constructor() {
-    const db = new CassandraVectorDatabase();
-    this.chatModel = null;
-    this.dialogRounds = 10;
-    this.conversationHistory = [];
-    this.aiTools = new AiTools();
-    this.vectorDatabase = db;
-    this.noteManagementPlugin = new NoteManagementPlugin(db);
+    try {
+      CassandraClient.keySpace = "eva_chat";
+      CassandraClient.secureConnectBundle = "config/secure-connect-eva-chat.zip"
+      
+      const db = CassandraVectorDatabase.getInstance();
+      
+      this.chatModel = null;
+      this.dialogRounds = 10;
+      this.conversationHistory = [];
+      this.aiTools = new AiTools();
+      this.vectorDatabase = db;
+      this.noteManagementPlugin = new NoteManagementPlugin(db);
+    } catch (error) {
+      console.error("RAG Class:", error);
+    }
   }
 
   /**
@@ -46,15 +55,10 @@ export default class RAG {
    * @returns Promise<string> Tool name
    */
   public async determineTool(userInput: string): Promise<string> {
-    const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools
-      .getAllTools()
-      .map(
-        (tool) =>
-          `- ToolName: ${tool.toolName}; ToolDescription: ${tool.toolDescription}`
-      )
-      .join(
-        "\n"
-      )}\n\nIf the user input suggests a specific tool's functionality, respond with that tool's name. Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\nRespond with the appropriate tool name based on the user's query. Respond with single word.`;
+    const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
+    \n If the user input suggests a specific tool's functionality, respond with that tool's name. 
+    Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\n
+    Respond with the appropriate tool name based on the user's query. Respond with single word.`;
 
     const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
     const toolName = response.content.toString().trim();
@@ -100,13 +104,16 @@ export default class RAG {
    * @param data JSON input string
    * @returns Promise<string> Evaluated outcome
    */
-  protected async jsonEvaluator(data: string, question?: string): Promise<string> {
+  protected async jsonEvaluator(
+    data: string,
+    question?: string
+  ): Promise<string> {
     const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your respnose.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
       new SystemMessage(promptText),
       new AIMessage(`Data: ${data}.`),
-      new HumanMessage(`Question: ${question}`)
+      new HumanMessage(`Question: ${question}`),
     ]);
 
     const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());

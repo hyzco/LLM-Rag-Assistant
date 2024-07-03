@@ -5,6 +5,7 @@ export interface ITool {
   toolArgs: {
     [key: string]: any;
   };
+  toolRules?: string;
   toString?(): string;
 }
 
@@ -20,6 +21,7 @@ class Tool implements ITool {
   toolName: string;
   toolDescription: string;
   toolArgs: { [key: string]: any };
+  toolRules: string;
 
   constructor(toolConfig: ITool) {
     this.toolName = toolConfig.toolName || "[IGNORED]";
@@ -32,6 +34,7 @@ class Tool implements ITool {
       toolName: this.toolName,
       toolDescription: this.toolDescription,
       toolArgs: this.toolArgs,
+      toolRules: this.toolRules,
     });
   }
 }
@@ -58,15 +61,39 @@ class Tools implements ITools {
 }
 
 export default class AiTools extends Tools {
+  private rules = [];
   constructor() {
     super();
+    this.rules.push(
+      "Never assume.",
+      "Always give short answers.",
+      "You are a voice assistant so your answers should be understood and simple."
+    );
+
     this.addTool(this.weatherTool());
     this.addTool(this.calendarTool());
     this.addTool(this.noteTool());
   }
 
+  public listTools() {
+    return super
+      .getAllTools()
+      .map(
+        (tool) =>
+          `- ToolName: ${tool.toolName}; ToolDescription: ${tool.toolDescription}`
+      )
+      .join("\n");
+  }
+
+  private listRules() {
+    return this.rules
+      .map((rule, index) => `Rule nr ${index}: ${rule}`)
+      .join("\n");
+  }
+
   private weatherTool() {
     const tool: ITool = {
+      toolRules: this.listRules(),
       toolName: "weather_tool",
       toolDescription:
         "Provides current weather information for a given location. If there is secondary location mentioned, checks if chat history contains the information.",
@@ -78,6 +105,7 @@ export default class AiTools extends Tools {
 
   private calendarTool() {
     const tool: ITool = {
+      toolRules: this.listRules(),
       toolName: "calendar_tool",
       toolDescription:
         "Provides functionality to update the all calendar and time management related tasks.",
@@ -89,10 +117,11 @@ export default class AiTools extends Tools {
 
   private noteTool() {
     const tool: ITool = {
+      toolRules: this.listRules(),
       toolName: "note_tool",
       toolDescription:
         "Tool to save or get note from the user. Only action types are 'save' or 'get'. Respond without quotes.",
-      toolArgs: { action_type: "", title:"", content: "" },
+      toolArgs: { action_type: "", title: "", content: "" },
     };
 
     return new Tool(tool);

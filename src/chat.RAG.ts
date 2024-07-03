@@ -203,6 +203,9 @@ export default class Chat extends RAG {
     if (this.context.lastToolUsed && this.context.lastToolData) {
       if (this.context.lastToolUsed === "weather_tool") {
         const weatherKeywords = [
+          "compare",
+          "warmer",
+          "colder",
           "rainy",
           "rain",
           "temperature",
@@ -215,9 +218,6 @@ export default class Chat extends RAG {
           "cloudy",
           "snow",
           "thunderstorm",
-          "precipitation",
-          "UV index",
-          "dew point",
         ];
         const pattern = new RegExp(weatherKeywords.join("|"), "i");
         return pattern.test(userInput);
@@ -314,7 +314,7 @@ export default class Chat extends RAG {
 
   // Handle default tool (chat)
   private async handleDefaultTool(userInput: string) {
-    const prompt = `You are a virtual assistant.`;
+    const prompt = `You are a virtual assistant and have few available tools your boss to use. Tools: ${this.aiTools.listTools()}`;
     this.conversationHistory.push(new HumanMessage(userInput));
 
     const chainResponse = await this.chatModel.invoke([
