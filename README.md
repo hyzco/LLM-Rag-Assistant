@@ -1,3 +1,5 @@
+If you clone and you like, please don't forget to give me star! ⭐⭐⭐⭐⭐ Feel free to start a discussion ! :)
+
 # LLM-Rag-Application
 
 A robust implementation of Langchain using Ollama, AI tools, a vector store, and a socket server!
