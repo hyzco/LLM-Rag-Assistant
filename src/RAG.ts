@@ -11,6 +11,7 @@ import CassandraVectorDatabase from "./database/CassandraVectorDatabase.js";
 import NoteManagementPlugin from "./plugins/NoteManagement.plugin.js";
 import { CassandraClient } from "./database/CassandraClient.js";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
+import logger from "./utils/Logger.js";
 
 export default class RAG {
   public aiTools: AiTools;
@@ -36,7 +37,7 @@ export default class RAG {
       this.vectorDatabase = db;
       this.noteManagementPlugin = new NoteManagementPlugin(db);
     } catch (error) {
-      console.error("RAG Class:", error);
+      logger.error("RAG Class:", error);
     }
     console.timeEnd("RAG constructor");
   }
@@ -46,12 +47,17 @@ export default class RAG {
    * @returns Promise<ChatOllama>
    */
   public async build(): Promise<ChatOllama> {
-    console.time("build");
-    this.chatModel = new ChatOllama({
-      baseUrl: process.env.OLLAMA_HOST,
-      model: process.env.DEFAULT_MODEL,
-    });
-    console.timeEnd("build");
+    console.time("Chat model build");
+    try {
+      this.chatModel = new ChatOllama({
+        baseUrl: process.env.OLLAMA_HOST,
+        model: process.env.DEFAULT_MODEL,
+      });
+      logger.info("Chat model is built.");
+    } catch (error) {
+      logger.error("Chat model could not be builded: ", error);
+    }
+    console.timeEnd("Chat model build");
     return this.chatModel;
   }
 
@@ -62,17 +68,21 @@ export default class RAG {
    */
   public async determineTool(userInput: string): Promise<string> {
     console.time("determineTool");
-    const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
-    \n If the user input suggests a specific tool's functionality, respond with that tool's name. 
-    Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\n
-    Respond with the appropriate tool name based on the user's query. Respond with single word.`;
+    try {
+      const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
+      \n If the user input suggests a specific tool's functionality, respond with that tool's name. 
+      Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\n
+      Respond with the appropriate tool name based on the user's query. Respond with single word.`;
 
-    const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
-    const toolName = response.content.toString().trim();
+      const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
+      const toolName = response.content.toString().trim();
 
-    const tool = this.aiTools.getTool(toolName);
-    console.timeEnd("determineTool");
-    return tool ? toolName : "default";
+      const tool = this.aiTools.getTool(toolName);
+      console.timeEnd("determineTool");
+      return tool ? toolName : "default";
+    } catch (error) {
+      logger.error("Tool could not be determined: ", error);
+    }
   }
 
   /**
@@ -81,32 +91,34 @@ export default class RAG {
    * @param tool Existing tool configuration
    * @returns Promise<any | null> Built tool options or null on failure
    */
-  public async buildTool(
-    userInput: string,
-    tool: ITool
-  ): Promise<any | null> {
+  public async buildTool(userInput: string, tool: ITool): Promise<any | null> {
     console.time("buildTool");
 
-    const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
-
-    const prompt = ChatPromptTemplate.fromMessages([
-      new SystemMessage(promptText),
-      new HumanMessage(
-        `User input JSON: ${userInput}. Tool JSON: ${tool.toString()}.`
-      ),
-    ]);
-
-    const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
-    const result = await chain.invoke({});
-
     try {
-      const parsedToolOptions = JSON.parse(result);
-      console.timeEnd("buildTool");
-      return parsedToolOptions;
+      const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
+
+      const prompt = ChatPromptTemplate.fromMessages([
+        new SystemMessage(promptText),
+        new HumanMessage(
+          `User input JSON: ${userInput}. Tool JSON: ${tool.toString()}.`
+        ),
+      ]);
+
+      const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
+      const result = await chain.invoke({});
+
+      try {
+        const parsedToolOptions = JSON.parse(result);
+        logger.log("Tool build is success.");
+        console.timeEnd("buildTool");
+        return parsedToolOptions;
+      } catch (error) {
+        logger.error("Error processing tool:", error);
+        console.timeEnd("buildTool");
+        return null;
+      }
     } catch (error) {
-      console.error("Error processing tool:", error);
-      console.timeEnd("buildTool");
-      return null;
+      logger.error("Tool could not be built: ", error);
     }
   }
 
@@ -120,21 +132,26 @@ export default class RAG {
     question?: string
   ): Promise<IterableReadableStream<string>> {
     console.time("jsonEvaluator");
-    const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your response.`;
+    try {
+      const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your response.`;
 
-    const prompt = ChatPromptTemplate.fromMessages([
-      new SystemMessage(promptText),
-      new AIMessage(`Data: ${data}.`),
-      new HumanMessage(`Question: ${question}`),
-    ]);
+      const prompt = ChatPromptTemplate.fromMessages([
+        new SystemMessage(promptText),
+        new AIMessage(`Data: ${data}.`),
+        new HumanMessage(`Question: ${question}`),
+      ]);
 
-    const chain: Promise<IterableReadableStream<string>> = prompt
-      .pipe(this.chatModel)
-      .pipe(new StringOutputParser())
-      .stream({});
+      const chain: Promise<IterableReadableStream<string>> = prompt
+        .pipe(this.chatModel)
+        .pipe(new StringOutputParser())
+        .stream({});
 
-    console.timeEnd("jsonEvaluator");
-    return chain;
+      console.timeEnd("jsonEvaluator");
+      logger.log("Tool JSON evaluation is success.");
+      return chain;
+    } catch (error) {
+      logger.error("Tool JSON could not be evaluated: ", error);
+    }
   }
 
   /**
@@ -144,19 +161,24 @@ export default class RAG {
    */
   public async queryOptimizer(query: string): Promise<string> {
     console.time("queryOptimizer");
-    const promptText = `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`;
+    try {
+      const promptText = `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`;
 
-    const prompt = ChatPromptTemplate.fromMessages([
-      new SystemMessage(promptText),
-      new HumanMessage(`Query to optimize = ${query}.`),
-    ]);
+      const prompt = ChatPromptTemplate.fromMessages([
+        new SystemMessage(promptText),
+        new HumanMessage(`Query to optimize = ${query}.`),
+      ]);
 
-    const chain = await prompt
-      .pipe(this.chatModel)
-      .pipe(new StringOutputParser())
-      .invoke({});
+      const chain = await prompt
+        .pipe(this.chatModel)
+        .pipe(new StringOutputParser())
+        .invoke({});
 
-    console.timeEnd("queryOptimizer");
-    return chain;
+      console.timeEnd("queryOptimizer");
+      logger.log("Query optimization is success.");
+      return chain;
+    } catch (error) {
+      logger.error("Query could not be optimized for AI. ", error);
+    }
   }
 }

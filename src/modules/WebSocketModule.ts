@@ -1,5 +1,6 @@
 // WebSocketModule.ts
 import WebSocket, { WebSocketServer } from "ws";
+import logger from "../utils/Logger";
 
 interface TranscribedData {
   chunks: any[]; // Adjust as per your actual data structure
@@ -18,8 +19,8 @@ interface Client {
 export default class WebSocketModule {
   private socket: WebSocketServer | null = null;
   private clients: Client[] = [];
-    transcribedChunk: any;
-  
+  transcribedChunk: any;
+
   constructor(private port: number) {
     this.port = port;
   }
@@ -28,7 +29,7 @@ export default class WebSocketModule {
     this.socket = new WebSocketServer({ port: this.port });
 
     this.socket.on("connection", (ws: WebSocket) => {
-      console.log("Client connected");
+      logger.log("WebSocket client connected.");
 
       const clientId = Math.random().toString(36).substring(7);
       this.clients.push({ id: clientId, ws });
@@ -38,16 +39,16 @@ export default class WebSocketModule {
           const data = JSON.parse(message.toString());
           this.handleWebSocketMessage(data, ws);
         } catch (error) {
-          console.error("Error parsing incoming message:", error);
+          logger.error("WebSocket error parsing incoming message:", error);
         }
       });
 
       ws.on("error", (err) => {
-        console.log("Error: ", err);
+        logger.log("Error: ", err);
       });
 
       ws.on("close", () => {
-        console.log("Client disconnected");
+        logger.log("Client disconnected");
         this.clients = this.clients.filter((client) => client.ws !== ws);
       });
     });
@@ -79,25 +80,25 @@ export default class WebSocketModule {
         this.handleTranscribedChunk(message.data);
         break;
       default:
-        console.log("Unknown message type:", message.type);
+        logger.log("Unknown message type:", message.type);
     }
   }
 
   // Example function to handle full transcribed data
   private handleTranscribedData(data: TranscribedData) {
-    console.log("Received full transcribed data:", data);
+    throw new Error("Method is not implemented.");
     // Process full transcribed data as needed
   }
 
   // Example function to handle transcribed chunk
   private async handleTranscribedChunk(chunk: any) {
     try {
-      console.log("Received transcribed chunk:", chunk);
+      logger.log("Received transcribed chunk:", chunk);
       this.transcribedChunk = chunk.text.trim();
 
       //   await this.processUserInput(chunk.text.trim());
     } catch (error) {
-      console.error("Error handling transcribed chunk:", error);
+      logger.error("Error handling transcribed chunk:", error);
     }
   }
 }

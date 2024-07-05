@@ -3,6 +3,7 @@ import { processArgs } from "../helpers/process_args.js";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import logger from "../utils/Logger.js";
 
 const ENVIRONMENT = {
   production: "production",
@@ -11,9 +12,15 @@ const ENVIRONMENT = {
 };
 
 const initializeApplication = () => {
-  const processedArgs = processArgs();
-  setEnvironment(processedArgs.env);
-  configureDotEnvironment(processedArgs.env);
+  try {
+    const processedArgs = processArgs();
+    setEnvironment(processedArgs.env);
+    logger.info(`Environment is set to ${processedArgs.env}`);
+    configureDotEnvironment(processedArgs.env);
+    logger.info(`Env. variables are set.`);
+  } catch (error) {
+    logger.error(`Env. variables could not be set: ${error}`);
+  }
 };
 
 const setEnvironment = (env: string) => {
@@ -29,20 +36,20 @@ const configureDotEnvironment = (env: string) => {
   const __dirname = path.dirname(__filename);
   const envPath = path.resolve(__dirname, `../../${dotEnvFile}`);
 
-  console.log(`Loading environment variables from ${envPath}`);
+  logger.log(`Loading env. variables from ${envPath}`);
 
   const result = dotenv.config({ path: envPath });
 
   if (result.error) {
-    throw new Error("Dot environment could not be configured - error: " + result.error);
+    throw new Error(
+      "Dot environment could not be configured - error: " + result.error
+    );
   }
 
   // Append to process.env
   for (const key in result.parsed) {
     process.env[key] = result.parsed[key];
   }
-
-  console.log(`Loaded environment variables: ${JSON.stringify(result.parsed, null, 2)}`);
 };
 
 export default initializeApplication;

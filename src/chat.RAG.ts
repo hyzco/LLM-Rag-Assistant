@@ -4,6 +4,14 @@ import RAG from "./RAG.js";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import WebSocketModule from "./modules/WebSocketModule.js";
 import AiToolsModule from "./modules/aiTools/AiToolsModule.js";
+import logger from "./utils/Logger.js";
+
+const TOOL_NAMES = {
+  WEATHER_TOOL: "weather_tool",
+  CALENDAR_TOOL: "calendar_tool",
+  NOTE_TOOL: "note_tool",
+  COURSE_TOOL: "course_tool",
+};
 
 interface Context {
   lastToolUsed: string | null;
@@ -11,32 +19,16 @@ interface Context {
 }
 
 export default class Chat extends RAG {
-  protected inquirer: PromptModule;
   private context: Context = { lastToolUsed: null, lastToolData: null };
-  private webSocketModule: WebSocketModule;
-  private aiToolsModule: AiToolsModule;
+  protected inquirer: PromptModule;
+  protected webSocketModule: WebSocketModule;
+  protected aiToolsModule: AiToolsModule;
 
   constructor() {
     super();
     this.inquirer = inquirer.createPromptModule();
     this.webSocketModule = new WebSocketModule(8080);
     this.aiToolsModule = new AiToolsModule(this);
-  }
-
-  // Method to build and run the chat application
-  public buildApp() {
-    return (async () => {
-      await this.build();
-      let i = 0;
-      while (i < 10) {
-        await this.processUserInput(this.webSocketModule.transcribedChunk);
-        i++;
-      }
-      console.log("APP is terminated.");
-      this.webSocketModule.closeWebSocket();
-
-      process.exit(0);
-    })();
   }
 
   // Process user input with context tracking
@@ -47,17 +39,17 @@ export default class Chat extends RAG {
       const toolName: string = await this.determineTool(userInput);
 
       if (toolName) {
-        console.log(`Determined tool: ${toolName}`);
+        logger.log(`Determined tool: ${toolName}`);
         const response = await this.getResponse(toolName, userInput);
         if (response) {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
         } else {
-          console.log("No appropriate tool found for the given input.");
+          logger.log("No appropriate tool found for the given input.");
         }
       }
     } catch (error) {
-      console.error("Error processing user input:", error);
+      logger.error("Error processing user input:", error);
     }
   }
 
@@ -72,16 +64,16 @@ export default class Chat extends RAG {
       response = await this.handleFollowUpQuestion(userInput);
     } else {
       switch (toolName) {
-        case "weather_tool":
+        case TOOL_NAMES.WEATHER_TOOL:
           response = await this.aiToolsModule.handleWeatherTool(userInput);
           break;
-        case "calendar_tool":
-          console.log("Tool has no method definition.");
+        case TOOL_NAMES.CALENDAR_TOOL:
+          logger.log("Tool has no method definition.");
           break;
-        case "note_tool":
+        case TOOL_NAMES.NOTE_TOOL:
           response = await this.aiToolsModule.handleNoteTool(userInput);
           break;
-        case "course_tool":
+        case TOOL_NAMES.COURSE_TOOL:
           response = await this.aiToolsModule.handleCourseTool(userInput);
           break;
         default:
