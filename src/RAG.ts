@@ -6,19 +6,19 @@ import {
 } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import AiTools, { ITool } from "./AiTools.js";
+import AiTools, { ITool } from "./modules/aiTools/AiTools.js";
 import CassandraVectorDatabase from "./database/CassandraVectorDatabase.js";
 import NoteManagementPlugin from "./plugins/NoteManagement.plugin.js";
 import { CassandraClient } from "./database/CassandraClient.js";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 
 export default class RAG {
-  protected chatModel: ChatOllama;
+  public aiTools: AiTools;
+  public noteManagementPlugin: NoteManagementPlugin;
+  public chatModel: ChatOllama;
+  public conversationHistory: (HumanMessage | AIMessage | SystemMessage)[];
   protected dialogRounds: number;
-  protected conversationHistory: (HumanMessage | AIMessage | SystemMessage)[];
-  protected aiTools: AiTools;
   protected vectorDatabase: CassandraVectorDatabase;
-  protected noteManagementPlugin: NoteManagementPlugin;
 
   constructor() {
     console.time("RAG constructor");
@@ -81,7 +81,7 @@ export default class RAG {
    * @param tool Existing tool configuration
    * @returns Promise<any | null> Built tool options or null on failure
    */
-  protected async buildTool(
+  public async buildTool(
     userInput: string,
     tool: ITool
   ): Promise<any | null> {
@@ -115,7 +115,7 @@ export default class RAG {
    * @param data JSON input string
    * @returns Promise<string> Evaluated outcome
    */
-  protected async jsonEvaluator(
+  public async jsonEvaluator(
     data: string,
     question?: string
   ): Promise<IterableReadableStream<string>> {
@@ -142,7 +142,7 @@ export default class RAG {
    * @param query Query string to optimize
    * @returns Promise<string> Optimized query
    */
-  protected async queryOptimizer(query: string): Promise<string> {
+  public async queryOptimizer(query: string): Promise<string> {
     console.time("queryOptimizer");
     const promptText = `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`;
 
