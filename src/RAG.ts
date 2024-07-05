@@ -10,6 +10,7 @@ import AiTools, { ITool } from "./AiTools.js";
 import CassandraVectorDatabase from "./database/CassandraVectorDatabase.js";
 import NoteManagementPlugin from "./plugins/NoteManagement.plugin.js";
 import { CassandraClient } from "./database/CassandraClient.js";
+import { IterableReadableStream } from "@langchain/core/utils/stream";
 
 export default class RAG {
   protected chatModel: ChatOllama;
@@ -20,12 +21,14 @@ export default class RAG {
   protected noteManagementPlugin: NoteManagementPlugin;
 
   constructor() {
+    console.time("RAG constructor");
     try {
       CassandraClient.keySpace = "eva_chat";
-      CassandraClient.secureConnectBundle = "config/secure-connect-eva-chat.zip"
-      
+      CassandraClient.secureConnectBundle =
+        "config/secure-connect-eva-chat.zip";
+
       const db = CassandraVectorDatabase.getInstance();
-      
+
       this.chatModel = null;
       this.dialogRounds = 10;
       this.conversationHistory = [];
@@ -35,6 +38,7 @@ export default class RAG {
     } catch (error) {
       console.error("RAG Class:", error);
     }
+    console.timeEnd("RAG constructor");
   }
 
   /**
@@ -42,10 +46,12 @@ export default class RAG {
    * @returns Promise<ChatOllama>
    */
   public async build(): Promise<ChatOllama> {
+    console.time("build");
     this.chatModel = new ChatOllama({
       baseUrl: process.env.OLLAMA_HOST,
       model: process.env.DEFAULT_MODEL,
     });
+    console.timeEnd("build");
     return this.chatModel;
   }
 
@@ -55,6 +61,7 @@ export default class RAG {
    * @returns Promise<string> Tool name
    */
   public async determineTool(userInput: string): Promise<string> {
+    console.time("determineTool");
     const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
     \n If the user input suggests a specific tool's functionality, respond with that tool's name. 
     Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\n
@@ -64,7 +71,7 @@ export default class RAG {
     const toolName = response.content.toString().trim();
 
     const tool = this.aiTools.getTool(toolName);
-
+    console.timeEnd("determineTool");
     return tool ? toolName : "default";
   }
 
@@ -78,6 +85,8 @@ export default class RAG {
     userInput: string,
     tool: ITool
   ): Promise<any | null> {
+    console.time("buildTool");
+
     const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
@@ -92,9 +101,11 @@ export default class RAG {
 
     try {
       const parsedToolOptions = JSON.parse(result);
+      console.timeEnd("buildTool");
       return parsedToolOptions;
     } catch (error) {
-      console.error("Failed to parse the new tool JSON.", error);
+      console.error("Error processing tool:", error);
+      console.timeEnd("buildTool");
       return null;
     }
   }
@@ -107,8 +118,9 @@ export default class RAG {
   protected async jsonEvaluator(
     data: string,
     question?: string
-  ): Promise<string> {
-    const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your respnose.`;
+  ): Promise<IterableReadableStream<string>> {
+    console.time("jsonEvaluator");
+    const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your response.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
       new SystemMessage(promptText),
@@ -116,10 +128,13 @@ export default class RAG {
       new HumanMessage(`Question: ${question}`),
     ]);
 
-    const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
-    const result = await chain.invoke({});
+    const chain: Promise<IterableReadableStream<string>> = prompt
+      .pipe(this.chatModel)
+      .pipe(new StringOutputParser())
+      .stream({});
 
-    return result;
+    console.timeEnd("jsonEvaluator");
+    return chain;
   }
 
   /**
@@ -128,6 +143,7 @@ export default class RAG {
    * @returns Promise<string> Optimized query
    */
   protected async queryOptimizer(query: string): Promise<string> {
+    console.time("queryOptimizer");
     const promptText = `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
@@ -135,9 +151,12 @@ export default class RAG {
       new HumanMessage(`Query to optimize = ${query}.`),
     ]);
 
-    const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
-    const result = await chain.invoke({});
+    const chain = await prompt
+      .pipe(this.chatModel)
+      .pipe(new StringOutputParser())
+      .invoke({});
 
-    return result;
+    console.timeEnd("queryOptimizer");
+    return chain;
   }
 }

@@ -1,5 +1,9 @@
+## Not required for git
+.vscode
 node_modules
+pnpm-lock.yaml
+
+##Application
 .env.development
 config/secure-connect-eva-chat.zip
-src/pnpm-lock.yaml
 src/config/secure-connect-eva-chat.zip

@@ -1,9 +1,9 @@
-import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
 import { OllamaEmbeddings } from "@langchain/community/embeddings/ollama";
+import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
+import { CassandraCRUDOperations } from "./CassandraCRUDOperations.js";
 import { CassandraClient } from "./CassandraClient.js";
 import { DocumentOperations } from "./DocumentOperations.js";
 import { VectorSearch } from "./VectorSearch.js";
-import { CassandraCRUDOperations } from "./CassandraCRUDOperations.js";
 
 export default class CassandraVectorDatabase {
   private static _instance: CassandraVectorDatabase;
@@ -36,7 +36,7 @@ export default class CassandraVectorDatabase {
       },
       keyspace: CassandraClient.keySpace,
       dimensions: 4096,
-      table: "test6",
+      table: "eva_notes",
       indices: [{ name: "title", value: "(title)" }],
       primaryKey: {
         name: "id",

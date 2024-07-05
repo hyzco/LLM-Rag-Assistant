@@ -27,15 +27,13 @@ export class DocumentOperations {
   ): Promise<Boolean> {
     try {
       const metadata = {
-        id: Math.floor(Math.random() * 1000000), // Adjust 1000000 based on your needs
+        id: Math.floor(Math.random() * 1000),
         title: jsonDocument.title,
       };
       const document = new Document({
         pageContent: JSON.stringify(jsonDocument),
         metadata,
       });
-
-      console.log(document);
 
       return await this.insertDocument(document);
     } catch (error) {

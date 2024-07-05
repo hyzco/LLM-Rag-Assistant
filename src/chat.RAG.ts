@@ -1,13 +1,16 @@
-import { AIMessage } from "@langchain/core/messages";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import NoteManagementPlugin, {
-  INote,
-} from "./plugins/NoteManagement.plugin.js";
-import RAG from "./RAG.js";
-import { ITool } from "./AiTools.js";
-import Api, { ApiMethods } from "./utils/Api.js";
+import {
+  AIMessage,
+  BaseMessageChunk,
+  HumanMessage,
+  SystemMessage,
+} from "@langchain/core/messages";
 import inquirer, { PromptModule } from "inquirer";
 import WebSocket, { WebSocketServer } from "ws";
+import { ITool } from "./AiTools.js";
+import RAG from "./RAG.js";
+import NoteManagementPlugin, { INote } from "./plugins/NoteManagement.plugin.js";
+import Api, { ApiMethods } from "./utils/Api.js";
+import { IterableReadableStream } from "@langchain/core/utils/stream";
 
 interface TranscribedData {
   chunks: any[]; // Adjust as per your actual data structure
@@ -132,69 +135,76 @@ export default class Chat extends RAG {
   // Process user input with context tracking
   public async processUserInput(socketInput: string | null = null) {
     try {
-      const userInput =
-        socketInput != null ? socketInput : await this.getUserInput();
+      const userInput = socketInput != null ? socketInput : await this.getUserInput();
       const toolName: string = await this.determineTool(userInput);
 
       if (toolName) {
         console.log(`Determined tool: ${toolName}`);
-        let response: string | string[];
-        if (this.isFollowUpQuestion(userInput)) {
-          response = await this.handleFollowUpQuestion(userInput);
+        const response = await this.getResponse(toolName, userInput);
+        if (response) {
+          this.conversationHistory.push(new AIMessage(response));
+          this.sendMessageToClients(response);
         } else {
-          switch (toolName) {
-            case "weather_tool":
-              response = await this.handleWeatherTool(userInput);
-              break;
-            case "calendar_tool":
-              console.log("Tool has no method definition.");
-              response = "Tool has no method definition.";
-              break;
-            case "note_tool":
-              response = await this.handleNoteTool(userInput);
-              break;
-            default:
-              response = await this.handleDefaultTool(userInput);
-              break;
-          }
-          this.context.lastToolUsed = toolName;
-          this.context.lastToolData = response;
+          console.log("No appropriate tool found for the given input.");
         }
-        console.log(response);
-        this.conversationHistory.push(new AIMessage(response.toString()));
-        this.sendMessageToClients(response);
-      } else {
-        console.log("No appropriate tool found for the given input.");
       }
     } catch (error) {
       console.error("Error processing user input:", error);
     }
   }
 
+  // Determine the appropriate tool and get the response
+  private async getResponse(toolName: string, userInput: string): Promise<string | void> {
+    let response: string | IterableReadableStream<String | BaseMessageChunk>;
+
+    if (this.isFollowUpQuestion(userInput)) {
+      response = await this.handleFollowUpQuestion(userInput);
+    } else {
+      switch (toolName) {
+        case "weather_tool":
+          response = await this.handleWeatherTool(userInput);
+          break;
+        case "calendar_tool":
+          console.log("Tool has no method definition.");
+          break;
+        case "note_tool":
+          response = await this.handleNoteTool(userInput);
+          break;
+        case "course_tool":
+          response = await this.handleCourseTool(userInput);
+          break;
+        default:
+          response = await this.handleDefaultTool(userInput);
+          break;
+      }
+      this.context.lastToolUsed = toolName;
+      this.context.lastToolData = response;
+    }
+    
+    return await this.convertResponseToString(response);
+  }
+
+  // Convert response to string if it is iterable
+  private async convertResponseToString(
+    response: string | IterableReadableStream<String | BaseMessageChunk>
+  ) {
+    if (typeof response === "string") {
+      return response;
+    } else {
+      let responseString = "";
+      for await (const chunk of response) {
+        const chunkContent = typeof chunk === "string" ? chunk : (chunk as BaseMessageChunk).content;
+        responseString += chunkContent;
+        process.stdout.write(chunkContent.toString()); // Use process.stdout.write to avoid new lines
+      }
+      console.log(); // Add a final new line after all chunks have been processed
+      return responseString;
+    }
+  }
+
   // Improved tool determination
   async determineTool(userInput: string): Promise<string> {
     const tool = await super.determineTool(userInput);
-
-    switch (tool) {
-      case "weather_tool":
-        if (
-          this.context.lastToolUsed === "weather_tool" &&
-          /is it/i.test(userInput)
-        ) {
-          return "default";
-        }
-        break;
-      case "note_tool":
-        // Example: Handle specific intent for note_tool
-        if (/note|remember/i.test(userInput)) {
-          return "note_tool";
-        }
-        break;
-      default:
-        break;
-    }
-
-    // Default: Return the determined tool or fallback to the original tool
     return tool;
   }
 
@@ -228,24 +238,32 @@ export default class Chat extends RAG {
   }
 
   // Handle follow-up questions based on previous data
-  private async handleFollowUpQuestion(userInput: string): Promise<string> {
-    if (
-      this.context.lastToolUsed === "weather_tool" &&
-      this.context.lastToolData
-    ) {
+  private async handleFollowUpQuestion(userInput: string) {
+    if (this.context.lastToolUsed === "weather_tool" && this.context.lastToolData) {
       const data = this.context.lastToolData;
-      const prompt = `Handle the follow up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
-      const response = await this.handleDefaultTool(prompt);
+      const prompt = `Handle the follow-up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
+      const response = this.handleDefaultTool(prompt);
       return response;
     }
-    return "I'm not sure how to answer that based on the previous data.";
+
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          "I'm not sure how to answer that based on the previous data."
+        );
+        controller.close();
+      },
+    }) as IterableReadableStream<String>;
   }
 
   // Handle tool input (common method for weather_tool and note_tool)
   private async handleToolInput(
     userInput: string,
     toolName: string,
-    actionHandler: (userInput: string, toolJson: ITool) => Promise<any>
+    actionHandler: (
+      userInput: string,
+      toolJson: ITool
+    ) => Promise<IterableReadableStream<String>> | Promise<string>
   ) {
     this.conversationHistory.push(new HumanMessage(userInput));
 
@@ -260,6 +278,16 @@ export default class Chat extends RAG {
   }
 
   // Handle weather tool input
+  private handleCourseTool(userInput: string) {
+    const actionHandler = (userInput: string) => {
+      const evaluatedStream = this.jsonEvaluator(userInput);
+      return evaluatedStream;
+    };
+
+    return this.handleToolInput(userInput, "course_tool", actionHandler);
+  }
+
+  // Handle weather tool input
   private async handleWeatherTool(userInput: string) {
     const actionHandler = async (userInput: string, toolJson: ITool) => {
       const weatherAPI = new Api("Weather API", async () => {
@@ -269,11 +297,11 @@ export default class Chat extends RAG {
         return weatherData;
       });
       const apiResponse = await weatherAPI.execute();
-      const evaluatedResponse = await this.jsonEvaluator(
+      const evaluatedStream = this.jsonEvaluator(
         JSON.stringify(apiResponse),
         userInput
       );
-      return evaluatedResponse;
+      return evaluatedStream;
     };
 
     return this.handleToolInput(userInput, "weather_tool", actionHandler);
@@ -304,7 +332,7 @@ export default class Chat extends RAG {
       } else if (actionType === "get") {
         const optimizedInput = await this.queryOptimizer(userInput);
         const results = await noteManagement.queryNotes(optimizedInput);
-        const pageContent = results.map((doc) => doc.pageContent);
+        const pageContent = results.map((doc) => doc.pageContent).join("");
         return pageContent;
       }
     };
@@ -313,16 +341,16 @@ export default class Chat extends RAG {
   }
 
   // Handle default tool (chat)
-  private async handleDefaultTool(userInput: string) {
+  private handleDefaultTool(userInput: string) {
     const prompt = `You are a virtual assistant and have few available tools your boss to use. Tools: ${this.aiTools.listTools()}`;
     this.conversationHistory.push(new HumanMessage(userInput));
 
-    const chainResponse = await this.chatModel.invoke([
+    const stream = this.chatModel.stream([
       new SystemMessage(prompt),
       ...this.conversationHistory,
     ]);
-    const content = chainResponse.content.toString().trim();
-    return content;
+
+    return stream;
   }
 
   // Get user input method

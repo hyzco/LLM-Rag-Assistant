@@ -73,6 +73,7 @@ export default class AiTools extends Tools {
     this.addTool(this.weatherTool());
     this.addTool(this.calendarTool());
     this.addTool(this.noteTool());
+    this.addTool(this.courseTool());
   }
 
   public listTools() {
@@ -122,6 +123,18 @@ export default class AiTools extends Tools {
       toolDescription:
         "Tool to save or get note from the user. Only action types are 'save' or 'get'. Respond without quotes.",
       toolArgs: { action_type: "", title: "", content: "" },
+    };
+
+    return new Tool(tool);
+  }
+
+  private courseTool() {
+    const tool: ITool = {
+      toolRules: "Give long course modules, every page should contain as much as text to fill A4 paper.",
+      toolName: "course_creator",
+      toolDescription:
+        "Tool to create extended course based on given user input, topic, target auidience and course format. Give your answers long, course should have extended information. No summary but actual long text.",
+      toolArgs: { input: "", topic: "", targetAuidience: "", courseFormat: "" },
     };
 
     return new Tool(tool);

@@ -28,6 +28,8 @@ export default class NoteManagementPlugin implements AiPlugin {
       throw new Error("Note title and content is empty.");
     }
 
+    note.timestamp = new Date();
+
     const isInserted =
       await this.vectorProvider.documentOperations.insertJsonDocument(note);
     if (isInserted) {
