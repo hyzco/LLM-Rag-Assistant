@@ -44,7 +44,7 @@ npm run start
 The socket server will run on `ws://localhost:8080`. This is crucial as the frontend relies on it.
 
 Frontend
-Check out the TTS-Assistant repository for a UI with TTS (Text-To-Speech) features.
+Check out the [TTS-Assistant ](https://github.com/hyzco/TTS-Assistant) repository for a UI with TTS (Text-To-Speech) features. 
 
 Usage
 Running the backend RAG application enables you to:
