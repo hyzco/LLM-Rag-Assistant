@@ -2,7 +2,12 @@ If you clone and you like, please don't forget to give me star! ⭐⭐⭐⭐⭐ 
 
 # LLM-Rag-Application
 
-A robust implementation of Langchain using Ollama, AI tools, a vector store, and a socket server!
+Dynamic implementation of Langchain using Ollama, AI tools, a vector store, and a socket server!
+#### Vision: 
+Target point is to reach a level where this software will be dynamic RAG application crafter, with custom AI tools. It should be generic however with specific use case templates to create LLM applications with less effort.
+
+#### Current Point:
+Before reaching the target point, I am implementing Virtual Assistant which have multiple tools to retrieve real informations. Then I will evolve it to `Vision` point.
 
 ## Overview
 
