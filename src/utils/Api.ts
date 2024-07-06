@@ -1,4 +1,5 @@
 import { Axios } from "axios";
+import logger from "./Logger";
 
 export default class Api {
   name: string;
@@ -13,7 +14,7 @@ export default class Api {
 export class ApiMethods {
   // Function to fetch weather data
   static async fetchWeatherData(location: string) {
-    console.log("Fetching weather data..");
+    logger.log("Fetching weather data..");
     const response = await Fetcher.getWeatherAPI().get("/current.json", {
       params: { q: location, key: process.env.WEATHER_API_KEY },
     });

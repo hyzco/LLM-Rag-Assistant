@@ -2,6 +2,7 @@ import { Document } from "@langchain/core/documents";
 import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
 import CassandraVectorDatabase from "../database/CassandraVectorDatabase.js";
 import AiPlugin from "./Plugin.js";
+import logger from "../utils/Logger.js";
 
 export interface INote {
   id?: number;
@@ -33,9 +34,9 @@ export default class NoteManagementPlugin implements AiPlugin {
     const isInserted =
       await this.vectorProvider.documentOperations.insertJsonDocument(note);
     if (isInserted) {
-      console.log("Note is stored.");
+      logger.log("Note is stored.");
     } else {
-      console.log("Note is not stored.");
+      logger.log("Note is not stored.");
     }
 
     return isInserted;
