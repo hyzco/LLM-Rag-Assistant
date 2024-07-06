@@ -109,6 +109,13 @@ Running the backend RAG application enables you to:
 - **Description**: The password for accessing the Astra DB.
 - **Usage**: Used in conjunction with the username to authenticate with the Astra DB service.
 
+## TO-DO:
+1. UNIT TESTS !!
+1. Endpoint to create tools dynamically with given parameters.
+2. Improve Note Tool (Use CRUD and compare performance with inserting JSON Document.
+3. Find a way to implement XTTs V2 streaming.
+4. Support different Embedding providers.
+5. Implement HuggingFace to retrieve model and execute locally for `ChatModel`.
 
 ## Contributing
 Feel free to fork the repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
