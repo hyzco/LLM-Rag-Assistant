@@ -16,7 +16,7 @@ The LLM-Rag-Application leverages the power of Langchain to provide functionalit
 ## Features
 
 - **LLM Chat**: Engage in conversations with the LLM.
-- **Real-time Weather Information**: Fetch weather data based on location.
+- **Real-time Weather and Time Information**: Fetch weather data based on location. Retrieve localized time.
 - **Note Management**: Take and store notes in a Cassandra vector store.
 - **Socket Server**: Real-time interaction capability with the frontend.
 
