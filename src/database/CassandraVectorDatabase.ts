@@ -1,9 +1,9 @@
 import { OllamaEmbeddings } from "@langchain/community/embeddings/ollama";
 import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
-import { CassandraCRUDOperations } from "./CassandraCRUDOperations.js";
-import { CassandraClient } from "./CassandraClient.js";
-import { DocumentOperations } from "./DocumentOperations.js";
-import { VectorSearch } from "./VectorSearch.js";
+import { CassandraCRUDOperations } from "./CassandraCRUDOperations";
+import { CassandraClient } from "./CassandraClient";
+import { DocumentOperations } from "./DocumentOperations";
+import { VectorSearch } from "./VectorSearch";
 
 export default class CassandraVectorDatabase {
   private static _instance: CassandraVectorDatabase;

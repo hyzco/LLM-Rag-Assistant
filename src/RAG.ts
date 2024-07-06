@@ -6,12 +6,12 @@ import {
 } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import AiTools, { ITool } from "./modules/aiTools/AiTools.js";
-import CassandraVectorDatabase from "./database/CassandraVectorDatabase.js";
-import NoteManagementPlugin from "./plugins/NoteManagement.plugin.js";
-import { CassandraClient } from "./database/CassandraClient.js";
+import AiTools, { ITool } from "./modules/aiTools/AiTools";
+import CassandraVectorDatabase from "./database/CassandraVectorDatabase";
+import NoteManagementPlugin from "./plugins/NoteManagement.plugin";
+import { CassandraClient } from "./database/CassandraClient";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
-import logger from "./utils/Logger.js";
+import logger from "./utils/Logger";
 
 export default class RAG {
   public aiTools: AiTools;

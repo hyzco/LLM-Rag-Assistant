@@ -1,10 +1,10 @@
 import { BaseMessageChunk, HumanMessage } from "@langchain/core/messages";
 import inquirer, { PromptModule } from "inquirer";
-import RAG from "./RAG.js";
+import RAG from "./RAG";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
-import WebSocketModule from "./modules/WebSocketModule.js";
-import AiToolsModule from "./modules/aiTools/AiToolsModule.js";
-import logger from "./utils/Logger.js";
+import WebSocketModule from "./modules/WebSocketModule";
+import AiToolsModule from "./modules/aiTools/AiToolsModule";
+import logger from "./utils/Logger";
 
 const TOOL_NAMES = {
   WEATHER_TOOL: "weather_tool",

@@ -1,4 +1,4 @@
-import { CassandraClient } from "./CassandraClient.js";
+import { CassandraClient } from "./CassandraClient";
 
 export class CassandraCRUDOperations {
   static async createTable(tableName: string, columns: string) {

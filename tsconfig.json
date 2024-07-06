@@ -1,28 +1,30 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    // "module": "Preserve",
+    // "moduleResolution": "Bundler",
     "target": "ESNext",
-    // "lib": [
-    //   "dom",
-    //   "dom.iterable",
-    //   "esnext",
-    // ],
-    // "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     // "strict": true,
-    // "forceConsistentCasingInFileNames": true,
-    // "module": "NodeNext",
-    "moduleResolution": "Bundler",
-    // "resolveJsonModule": true,
-    // "isolatedModules": true,
-    // "noEmit": true,
-    "types": ["node"]
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "jest"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
     "src/**/*.ts",
     "./*.ts",
-    "node_modules"
+    "__TESTS__/**/*.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

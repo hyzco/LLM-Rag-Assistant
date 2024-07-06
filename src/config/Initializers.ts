@@ -1,9 +1,8 @@
 // config/Initializers.ts
-import { processArgs } from "../helpers/process_args.js";
+import { processArgs } from "../helpers/process_args";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
-import logger from "../utils/Logger.js";
+import logger from "../utils/Logger";
 
 const ENVIRONMENT = {
   production: "production",
@@ -11,12 +10,13 @@ const ENVIRONMENT = {
   development: "development",
 };
 
-const initializeApplication = () => {
+const initializeApplication = (env?:string) => {
   try {
     const processedArgs = processArgs();
-    setEnvironment(processedArgs.env);
-    logger.info(`Environment is set to ${processedArgs.env}`);
-    configureDotEnvironment(processedArgs.env);
+    const appEnv = env ? env : processedArgs.env;
+    setEnvironment(appEnv);
+    logger.info(`Environment is set to ${appEnv}`);
+    configureDotEnvironment(appEnv);
     logger.info(`Env. variables are set.`);
   } catch (error) {
     logger.error(`Env. variables could not be set: ${error}`);
@@ -33,9 +33,7 @@ const setEnvironment = (env: string) => {
 
 const configureDotEnvironment = (env: string) => {
   const dotEnvFile = `.env.${env}`;
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const envPath = path.resolve(__dirname, `../../${dotEnvFile}`);
+  const envPath = path.resolve(process.env.PWD, dotEnvFile);
 
   logger.log(`Loading env. variables from ${envPath}`);
 

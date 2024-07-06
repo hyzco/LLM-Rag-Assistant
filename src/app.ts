@@ -1,7 +1,7 @@
 // app.ts or index.ts (main entry point)
-import Chat from "./chat.RAG.js";
-import initializeApplication from "./config/Initializers.js";
-import logger from "./utils/Logger.js";
+import Chat from "./chat.RAG";
+import initializeApplication from "./config/Initializers";
+import logger from "./utils/Logger";
 
 class App extends Chat {
   constructor() {

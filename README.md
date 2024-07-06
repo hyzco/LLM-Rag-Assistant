@@ -1,7 +1,8 @@
-If you clone and you like, please don't forget to give me star! ⭐⭐⭐⭐⭐ Feel free to start a discussion ! :)
+To get started, set your OPENAI_API_KEY environment variable, or other required keys for the providers you selected.
 
-# LLM-Rag-Application
+Next, edit promptfooconfig.yaml.
 
+<<<<<<< HEAD
 Dynamic implementation of Langchain using Ollama, AI tools, a vector store, and a socket server!
 #### Vision: 
 Target point is to reach a level where this software will be dynamic RAG application crafter, with custom AI tools. It should be generic however with specific use case templates to create LLM applications with less effort.
@@ -33,14 +34,14 @@ The LLM-Rag-Application leverages the power of Langchain to provide functionalit
 ```bash
 git clone https://github.com/hyzco/LLM-Rag-Application.git
 cd LLM-Rag-Application
+=======
+Then run:
+>>>>>>> 6dbed78 (introduce jest)
 ```
-### 2. Install Dependencies
-```bash
-npm install
+promptfoo eval
 ```
-### 3. Configure Environment Variables
-Rename `.env.development.example` to `.env.development` and update it with your credentials and API keys.
 
+<<<<<<< HEAD
 ### 4. Run the Development Server
 ```bash
 npm run start
@@ -127,3 +128,6 @@ Feel free to fork the repository and submit pull requests. For major changes, pl
 
 ### License
 This project is licensed under the MIT License.
+=======
+Afterwards, you can view the results by running `promptfoo view`
+>>>>>>> 6dbed78 (introduce jest)
