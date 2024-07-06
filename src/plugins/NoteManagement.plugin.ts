@@ -1,13 +1,8 @@
 import { Document } from "@langchain/core/documents";
 import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
-<<<<<<< HEAD
-import CassandraVectorDatabase from "../database/CassandraVectorDatabase.js";
-import AiPlugin from "./Plugin.js";
-import logger from "../utils/Logger.js";
-=======
 import CassandraVectorDatabase from "../database/CassandraVectorDatabase";
 import AiPlugin from "./Plugin";
->>>>>>> 6dbed78 (introduce jest)
+import logger from "../utils/Logger";
 
 export interface INote {
   id?: number;

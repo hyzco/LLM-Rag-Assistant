@@ -53,7 +53,6 @@ class Tools implements ITools {
   }
 
   getTool(name: string): ITool {
-<<<<<<< HEAD
     if (name.toLowerCase() === "default")
       return new Tool({
         toolName: "default",
@@ -61,10 +60,6 @@ class Tools implements ITools {
           "Default mode is chit chat mode, answers any question. Behaves friendly.",
       });
     return this.tools.find((tool) => tool.toolName === name);
-=======
-    const foundTool = this.tools.find((tool) => tool.toolName === name);
-    return foundTool;
->>>>>>> 6dbed78 (introduce jest)
   }
 
   getAllTools(): ITool[] {
