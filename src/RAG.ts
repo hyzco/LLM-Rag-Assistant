@@ -62,6 +62,34 @@ export default class RAG {
   }
 
   /**
+   * Validate if the determined tool is appropriate for the user's input.
+   * @param userInput User input string
+   * @param toolName Tool name determined by the AI
+   * @returns Promise<boolean> Validation result
+   */
+  public async validateToolSelection(
+    userInput: string,
+    toolName: string
+  ): Promise<boolean> {
+    console.time("validateToolSelection");
+    try {
+      const prompt = `You need to validate if the selected tool is appropriate for the given user input. Respond with 'yes' if the tool is appropriate and 'no' otherwise.
+      \n User input: "${userInput}". \n Selected tool: "${this.aiTools.getTool(
+        toolName
+      )}".`;
+
+      const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
+      const validationResponse = response.content.toString().trim();
+      const isValid = validationResponse.toLowerCase() === "yes";
+      console.timeEnd("validateToolSelection");
+      return isValid;
+    } catch (error) {
+      logger.error("Tool selection could not be validated: ", error);
+      return false;
+    }
+  }
+
+  /**
    * Determine the appropriate tool based on user input.
    * @param userInput User input string
    * @returns Promise<string> Tool name
@@ -69,19 +97,46 @@ export default class RAG {
   public async determineTool(userInput: string): Promise<string> {
     console.time("determineTool");
     try {
-      const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
-      \n If the user input suggests a specific tool's functionality, respond with that tool's name. 
-      Otherwise, assume 'default' as the tool name.\n\nUser input: "${userInput}"\n
-      Respond with the appropriate tool name based on the user's query. Respond with single word.`;
+      let toolName = "default";
+      let attempts = 1;
+      const maxAttempts = 3;
 
-      const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
-      const toolName = response.content.toString().trim();
+      while (attempts <= maxAttempts) {
+        const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
+        \n When you determine respond with the tool's name. 
+        Otherwise, respond with 'default'. \n  User input: "${userInput}". Response should be single word only.`;
 
-      const tool = this.aiTools.getTool(toolName);
+        const response = await this.chatModel.invoke([
+          new SystemMessage(prompt),
+        ]);
+        toolName = response.content.toString().trim();
+
+        const isValidTool = await this.validateToolSelection(
+          userInput,
+          toolName
+        );
+
+        logger.info(
+          `${toolName} is ${
+            isValidTool ? "valid" : "not valid"
+          } tool according to user's input.${
+            !isValidTool ? ` Retrying.. ${attempts}/${maxAttempts}` : ""
+          }`
+        );
+
+        if (isValidTool) {
+          console.timeEnd("determineTool");
+          return toolName;
+        }
+
+        attempts++;
+      }
+
       console.timeEnd("determineTool");
-      return tool ? toolName : "default";
+      return "default";
     } catch (error) {
       logger.error("Tool could not be determined: ", error);
+      return "default";
     }
   }
 
@@ -93,33 +148,47 @@ export default class RAG {
    */
   public async buildTool(userInput: string, tool: ITool): Promise<any | null> {
     console.time("buildTool");
+    const maxAttempts = 3;
+    let attempts = 0;
 
-    try {
-      const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
-
-      const prompt = ChatPromptTemplate.fromMessages([
-        new SystemMessage(promptText),
-        new HumanMessage(
-          `User input JSON: ${userInput}. Tool JSON: ${tool.toString()}.`
-        ),
-      ]);
-
-      const chain = prompt.pipe(this.chatModel).pipe(new StringOutputParser());
-      const result = await chain.invoke({});
-
+    while (attempts < maxAttempts) {
       try {
-        const parsedToolOptions = JSON.parse(result);
-        logger.log("Tool build is success.");
-        console.timeEnd("buildTool");
-        return parsedToolOptions;
+        const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
+
+        const prompt = ChatPromptTemplate.fromMessages([
+          new SystemMessage(promptText),
+          new HumanMessage(
+            `User input JSON: ${userInput}. Tool JSON: ${tool.toString()}.`
+          ),
+        ]);
+
+        const chain = prompt
+          .pipe(this.chatModel)
+          .pipe(new StringOutputParser());
+        const result = await chain.invoke({});
+
+        try {
+          const parsedToolOptions = JSON.parse(result);
+          logger.log("Tool build is success.");
+          console.timeEnd("buildTool");
+          return parsedToolOptions;
+        } catch (error) {
+          logger.error("Error processing tool:", error);
+        }
       } catch (error) {
-        logger.error("Error processing tool:", error);
-        console.timeEnd("buildTool");
-        return null;
+        logger.error("Tool could not be built: ", error);
       }
-    } catch (error) {
-      logger.error("Tool could not be built: ", error);
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        logger.warn(
+          `Retrying buildTool... Attempt ${attempts + 1} of ${maxAttempts}`
+        );
+      }
     }
+
+    console.timeEnd("buildTool");
+    return null;
   }
 
   /**

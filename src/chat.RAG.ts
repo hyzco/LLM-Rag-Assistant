@@ -11,15 +11,21 @@ const TOOL_NAMES = {
   CALENDAR_TOOL: "calendar_tool",
   NOTE_TOOL: "note_tool",
   COURSE_TOOL: "course_tool",
+  TIME_TOOL: "time_tool",
 };
 
 interface Context {
+  isLLMInit: boolean;
   lastToolUsed: string | null;
   lastToolData: any;
 }
 
 export default class Chat extends RAG {
-  private context: Context = { lastToolUsed: null, lastToolData: null };
+  private context: Context = {
+    isLLMInit: true,
+    lastToolUsed: null,
+    lastToolData: null,
+  };
   protected inquirer: PromptModule;
   protected webSocketModule: WebSocketModule;
   protected aiToolsModule: AiToolsModule;
@@ -45,7 +51,7 @@ export default class Chat extends RAG {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
         } else {
-          logger.log("No appropriate tool found for the given input.");
+          logger.log("We had troubles here to retrieve response from LLM. Try again.");
         }
       }
     } catch (error) {
@@ -63,7 +69,7 @@ export default class Chat extends RAG {
     if (this.isFollowUpQuestion(userInput)) {
       response = await this.handleFollowUpQuestion(userInput);
     } else {
-      switch (toolName) {
+      switch (toolName.trim()) {
         case TOOL_NAMES.WEATHER_TOOL:
           response = await this.aiToolsModule.handleWeatherTool(userInput);
           break;
@@ -76,11 +82,15 @@ export default class Chat extends RAG {
         case TOOL_NAMES.COURSE_TOOL:
           response = await this.aiToolsModule.handleCourseTool(userInput);
           break;
+        case TOOL_NAMES.TIME_TOOL:
+          response = await this.aiToolsModule.handleTimeTool(userInput);
+          break;
         default:
-          response = await this.aiToolsModule.handleDefaultTool(userInput);
+          response = await this.aiToolsModule.handleDefaultTool(userInput, this.context.isLLMInit);
+          this.context.isLLMInit = false;
           break;
       }
-      this.context.lastToolUsed = toolName;
+      this.context.lastToolUsed = toolName.trim();
       this.context.lastToolData = response;
     }
 
@@ -145,7 +155,7 @@ export default class Chat extends RAG {
     ) {
       const data = this.context.lastToolData;
       const prompt = `Handle the follow-up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
-      const response = this.aiToolsModule.handleDefaultTool(prompt);
+      const response = this.aiToolsModule.handleDefaultTool(prompt, this.context.isLLMInit);
       return response;
     }
 

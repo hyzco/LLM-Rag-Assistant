@@ -6,6 +6,7 @@ import NoteManagementPlugin, {
 import Api, { ApiMethods } from "../../utils/Api";
 import { ITool } from "./AiTools";
 import Chat from "../../chat.RAG";
+import logger from "../../utils/Logger";
 
 export default class AiToolsModule {
   protected ragInstance: Chat;
@@ -35,7 +36,7 @@ export default class AiToolsModule {
     return response;
   }
 
-  // Handle weather tool input
+  // Handle course tool input
   public handleCourseTool(userInput: string) {
     const actionHandler = (userInput: string) => {
       const evaluatedStream = this.ragInstance.jsonEvaluator(userInput);
@@ -45,12 +46,27 @@ export default class AiToolsModule {
     return this.handleToolInput(userInput, "course_tool", actionHandler);
   }
 
+  // Handle time tool
+  public handleTimeTool(userInput: string) {
+    const actionHandler = (userInput: string, toolJson: ITool) => {
+      toolJson.toolArgs.dateTime = new Date().toLocaleString();
+      const evaluatedStream = this.ragInstance.jsonEvaluator(
+        JSON.stringify(toolJson),
+        userInput
+      );
+      return evaluatedStream;
+    };
+
+    return this.handleToolInput(userInput, "time_tool", actionHandler);
+  }
+
   // Handle weather tool input
   public async handleWeatherTool(userInput: string) {
     const actionHandler = async (userInput: string, toolJson: ITool) => {
       const weatherAPI = new Api("Weather API", async () => {
+        const location = toolJson.toolArgs.location;
         const weatherData = await ApiMethods.fetchWeatherData(
-          toolJson.toolArgs.location
+          location ? location : "No location provided."
         );
         return weatherData;
       });
@@ -84,9 +100,9 @@ export default class AiToolsModule {
       ) {
         const isStored = await noteManagement.storeNote(note);
         if (isStored) {
-          console.log("New note is added. Note=", toolJson);
+          logger.log("New note is added. Note=", toolJson);
         } else {
-          console.warn("New note could not be added.");
+          logger.warn("New note could not be added.");
         }
       } else if (actionType === "get") {
         const optimizedInput = await this.ragInstance.queryOptimizer(userInput);
@@ -100,12 +116,14 @@ export default class AiToolsModule {
   }
 
   // Handle default tool (chat)
-  public handleDefaultTool(userInput: string) {
-    const prompt = `You are a virtual assistant and have few available tools your boss to use. Tools: ${this.ragInstance.aiTools.listTools()}`;
-    this.ragInstance.conversationHistory.push(new HumanMessage(userInput));
+  public handleDefaultTool(userInput: string, init: boolean) {
+    const prompt = `You are a cool virtual assistant and have few available tools your boss to use. Always give very short answers. Don't force to suggest tools. Tools: ${this.ragInstance.aiTools.listTools()}`;
+    const message = init
+      ? new SystemMessage(prompt)
+      : new HumanMessage(userInput);
+    this.ragInstance.conversationHistory.push(message);
 
     const stream = this.ragInstance.chatModel.stream([
-      new SystemMessage(prompt),
       ...this.ragInstance.conversationHistory,
     ]);
 

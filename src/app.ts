@@ -17,7 +17,7 @@ class App extends Chat {
           await super.processUserInput(this.webSocketModule.transcribedChunk);
           i++;
         }
-        logger.warning("APP is terminated.");
+        logger.warn("APP is terminated.");
         this.webSocketModule.closeWebSocket();
 
         process.exit(0);

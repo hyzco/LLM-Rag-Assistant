@@ -20,6 +20,7 @@ const initializeApplication = () => {
     logger.info(`Env. variables are set.`);
   } catch (error) {
     logger.error(`Env. variables could not be set: ${error}`);
+    process.exit(0);
   }
 };
 
@@ -42,7 +43,7 @@ const configureDotEnvironment = (env: string) => {
 
   if (result.error) {
     throw new Error(
-      "Dot environment could not be configured - error: " + result.error
+      "Dot environment could not be configured. \n" + result.error
     );
   }
 

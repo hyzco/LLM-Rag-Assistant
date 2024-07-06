@@ -2,7 +2,7 @@
 export interface ITool {
   toolName: string;
   toolDescription: string;
-  toolArgs: {
+  toolArgs?: {
     [key: string]: any;
   };
   toolRules?: string;
@@ -52,6 +52,12 @@ class Tools implements ITools {
   }
 
   getTool(name: string): ITool {
+    if (name.toLowerCase() === "default")
+      return new Tool({
+        toolName: "default",
+        toolDescription:
+          "Default mode is chit chat mode, answers any question. Behaves friendly.",
+      });
     return this.tools.find((tool) => tool.toolName === name);
   }
 
@@ -71,6 +77,7 @@ export default class AiTools extends Tools {
     );
 
     this.addTool(this.weatherTool());
+    this.addTool(this.timeTool());
     this.addTool(this.calendarTool());
     this.addTool(this.noteTool());
     this.addTool(this.courseTool());
@@ -81,7 +88,7 @@ export default class AiTools extends Tools {
       .getAllTools()
       .map(
         (tool) =>
-          `- ToolName: ${tool.toolName}; ToolDescription: ${tool.toolDescription}`
+          `- ToolName: ${tool.toolName}; ToolDescription: ${tool.toolDescription};`
       )
       .join("\n");
   }
@@ -99,6 +106,18 @@ export default class AiTools extends Tools {
       toolDescription:
         "Provides current weather information for a given location. If there is secondary location mentioned, checks if chat history contains the information.",
       toolArgs: { location: "" },
+    };
+
+    return new Tool(tool);
+  }
+
+  private timeTool() {
+    const tool: ITool = {
+      toolRules: this.listRules(),
+      toolName: "time_tool",
+      toolDescription:
+        "Provides functionality to return date time information from tool args.",
+      toolArgs: { dateTime: "" },
     };
 
     return new Tool(tool);
@@ -130,7 +149,8 @@ export default class AiTools extends Tools {
 
   private courseTool() {
     const tool: ITool = {
-      toolRules: "Give long course modules, every page should contain as much as text to fill A4 paper.",
+      toolRules:
+        "Give long course modules, every page should contain as much as text to fill A4 paper.",
       toolName: "course_creator",
       toolDescription:
         "Tool to create extended course based on given user input, topic, target auidience and course format. Give your answers long, course should have extended information. No summary but actual long text.",
