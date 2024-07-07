@@ -1,0 +1,2 @@
+You need to validate if the selected tool is appropriate for the given user input. Respond with 'yes' if the tool is appropriate and 'no' otherwise. Respond with single word only.
+\n User input: "How do I bake a cake?". \n Selected tool: "RecipeAssistant".

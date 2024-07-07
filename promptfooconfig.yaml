@@ -1,0 +1,45 @@
+defaultTest:
+  assert:
+    - type: not-icontains
+      value: AI language model
+    - type: not-icontains
+      value: just an AI
+    - type: not-icontains
+      value: sorry
+    - type: not-icontains
+      value: I cannot
+
+tests:
+  - vars:
+      message: Validate if the determined tool is appropriate for 'How do I bake a cake?'
+  - vars:
+      message: Determine the appropriate tool for 'I need a tool to manage my notes'
+  - vars:
+      message: Build a tool for 'Analyze sales data' using the provided JSON
+  - vars:
+      message: Evaluate the JSON data for a given API response
+  - vars:
+      message: Optimize the query 'Find all notes related to project X'
+
+prompts:
+  src/prompts/validate_tool_selection.txt: validate_tool_selection
+  src/prompts/determine_tool.txt: determine_tool
+  src/prompts/build_tool.txt: build_tool
+  # src/prompts/json_evaluator.txt: json_evaluator
+  # src/prompts/query_optimizer.txt: query_optimizer
+
+providers:
+  - id: ollama:llama3
+    prompts:
+    - validate_tool_selection
+    - determine_tool
+    - build_tool
+    # - json_evaluator
+    # - query_optimizer
+  - id: ollama:llama2-uncensored
+    prompts:
+    - validate_tool_selection
+    - determine_tool
+    - build_tool
+    # - json_evaluator
+    # - query_optimizer
