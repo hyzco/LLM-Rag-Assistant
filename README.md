@@ -130,7 +130,9 @@ Running the backend RAG application enables you to:
 
 ## TO-DO
 
-1. UNIT TESTS !!
+1. UNIT TESTS & LLM Prompt testing [in-progress]
+3. Create Dynamic RAG builder structure to be able to create plugins, dynamic tools and workflows. [in-progress]
+4. Export grading utility from CodeAnalyzer POC plugin and integrate with RAG builder, to be able to retrieve related source information and validating. 
 1. Endpoint to create tools dynamically with given parameters.
 2. Improve Note Tool (Use CRUD and compare performance with inserting JSON Document.
 3. Find a way to implement XTTs V2 streaming.
