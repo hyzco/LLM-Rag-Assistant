@@ -47,6 +47,7 @@ export default class Chat extends RAG {
       if (toolName) {
         logger.log(`Determined tool: ${toolName}`);
         const response = await this.getResponse(toolName, userInput);
+        logger.log("response: ", response);
         if (response) {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
@@ -69,6 +70,7 @@ export default class Chat extends RAG {
     let response: string | IterableReadableStream<String | BaseMessageChunk>;
 
     if (this.isFollowUpQuestion(userInput, toolName)) {
+      console.log("is follow up question?", "yes");
       response = await this.handleFollowUpQuestion(userInput, toolName);
     } else {
       switch (toolName.trim()) {
@@ -140,9 +142,10 @@ export default class Chat extends RAG {
 
     const isFollowUp = super.isFollowUpQuestion(
       userInput,
+      toolName,
+      keywords,
       this.context.lastToolUsed,
-      this.context.lastToolData,
-      keywords
+      this.context.lastToolData
     );
     return isFollowUp;
   }
