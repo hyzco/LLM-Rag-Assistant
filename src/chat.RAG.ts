@@ -51,7 +51,9 @@ export default class Chat extends RAG {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
         } else {
-          logger.log("We had troubles here to retrieve response from LLM. Try again.");
+          logger.log(
+            "We had troubles here to retrieve response from LLM. Try again."
+          );
         }
       }
     } catch (error) {
@@ -66,8 +68,8 @@ export default class Chat extends RAG {
   ): Promise<string | void> {
     let response: string | IterableReadableStream<String | BaseMessageChunk>;
 
-    if (this.isFollowUpQuestion(userInput)) {
-      response = await this.handleFollowUpQuestion(userInput);
+    if (this.isFollowUpQuestion(userInput, toolName)) {
+      response = await this.handleFollowUpQuestion(userInput, toolName);
     } else {
       switch (toolName.trim()) {
         case TOOL_NAMES.WEATHER_TOOL:
@@ -86,7 +88,10 @@ export default class Chat extends RAG {
           response = await this.aiToolsModule.handleTimeTool(userInput);
           break;
         default:
-          response = await this.aiToolsModule.handleDefaultTool(userInput, this.context.isLLMInit);
+          response = await this.aiToolsModule.handleDefaultTool(
+            userInput,
+            this.context.isLLMInit
+          );
           this.context.isLLMInit = false;
           break;
       }
@@ -98,75 +103,60 @@ export default class Chat extends RAG {
   }
 
   // Convert response to string if it is iterable
-  private async convertResponseToString(
+  protected convertResponseToString(
     response: string | IterableReadableStream<String | BaseMessageChunk>
   ) {
-    if (typeof response === "string") {
-      return response;
-    } else {
-      let responseString = "";
-      for await (const chunk of response) {
-        const chunkContent =
-          typeof chunk === "string"
-            ? chunk
-            : (chunk as BaseMessageChunk).content;
-        responseString += chunkContent;
-        process.stdout.write(chunkContent.toString()); // Use process.stdout.write to avoid new lines
-      }
-      console.log();
-      return responseString;
-    }
+    return super.convertResponseToString(response);
   }
 
   // Check if the question is a follow-up question
-  private isFollowUpQuestion(userInput: string): boolean {
-    if (this.context.lastToolUsed && this.context.lastToolData) {
-      if (this.context.lastToolUsed === "weather_tool") {
-        const weatherKeywords = [
-          "compare",
-          "warmer",
-          "colder",
-          "rainy",
-          "rain",
-          "temperature",
-          "condition",
-          "forecast",
-          "storm",
-          "wind",
-          "humidity",
-          "sunny",
-          "cloudy",
-          "snow",
-          "thunderstorm",
-        ];
-        const pattern = new RegExp(weatherKeywords.join("|"), "i");
-        return pattern.test(userInput);
-      }
+  protected isFollowUpQuestion(userInput: string, toolName: string): boolean {
+    let keywords = [];
+    const weatherKeywords = [
+      "compare",
+      "warmer",
+      "colder",
+      "rainy",
+      "rain",
+      "temperature",
+      "condition",
+      "forecast",
+      "storm",
+      "wind",
+      "humidity",
+      "sunny",
+      "cloudy",
+      "snow",
+      "thunderstorm",
+    ];
+
+    switch (toolName) {
+      case TOOL_NAMES.WEATHER_TOOL:
+        keywords = weatherKeywords;
+        break;
+      default:
+        break;
     }
 
-    return false;
+    const isFollowUp = super.isFollowUpQuestion(
+      userInput,
+      this.context.lastToolUsed,
+      this.context.lastToolData,
+      keywords
+    );
+    return isFollowUp;
   }
 
   // Handle follow-up questions based on previous data
-  private async handleFollowUpQuestion(userInput: string) {
-    if (
-      this.context.lastToolUsed === "weather_tool" &&
-      this.context.lastToolData
-    ) {
-      const data = this.context.lastToolData;
-      const prompt = `Handle the follow-up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
-      const response = this.aiToolsModule.handleDefaultTool(prompt, this.context.isLLMInit);
-      return response;
-    }
-
-    return new ReadableStream({
-      start(controller) {
-        controller.enqueue(
-          "I'm not sure how to answer that based on the previous data."
-        );
-        controller.close();
-      },
-    }) as IterableReadableStream<String>;
+  protected async handleFollowUpQuestion(userInput: string, toolName: string) {
+    return await super.handleFollowUpQuestion(
+      userInput,
+      toolName,
+      this.context.lastToolUsed,
+      this.context.lastToolData,
+      this.aiToolsModule,
+      this.context.isLLMInit
+    );
   }
 
   // Get user input method

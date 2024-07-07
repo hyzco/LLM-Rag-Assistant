@@ -8,3 +8,4 @@ pnpm-lock.yaml
 .env.test
 config/secure-connect-eva-chat.zip
 src/config/secure-connect-eva-chat.zip
+logs/*

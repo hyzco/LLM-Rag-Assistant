@@ -12,7 +12,15 @@ import NoteManagementPlugin from "./plugins/NoteManagement.plugin";
 import { CassandraClient } from "./database/CassandraClient";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import logger from "./utils/Logger";
-import CodeAnalyzerPlugin from "./plugins/CodeAnalyzer.plugin";
+import { BaseMessageChunk } from "@langchain/core/messages";
+
+const TOOL_NAMES = {
+  WEATHER_TOOL: "weather_tool",
+  CALENDAR_TOOL: "calendar_tool",
+  NOTE_TOOL: "note_tool",
+  COURSE_TOOL: "course_tool",
+  TIME_TOOL: "time_tool",
+};
 
 export default class RAG {
   public aiTools: AiTools;
@@ -29,25 +37,19 @@ export default class RAG {
       CassandraClient.secureConnectBundle =
         process.env["ASTRA_DB_SECURE_BUNDLE_PATH"];
 
-      const db = CassandraVectorDatabase.getInstance();
-
+      this.vectorDatabase = CassandraVectorDatabase.getInstance();
       this.chatModel = null;
       this.dialogRounds = 10;
       this.conversationHistory = [];
       this.aiTools = new AiTools();
-      this.vectorDatabase = db;
-      this.noteManagementPlugin = new NoteManagementPlugin(db);
+      this.noteManagementPlugin = new NoteManagementPlugin(this.vectorDatabase);
     } catch (error) {
       logger.error("RAG Class:", error);
     }
     console.timeEnd("RAG constructor");
   }
 
-  /**
-   * Initialize and build the chat model.
-   * @returns Promise<ChatOllama>
-   */
-  public async build(): Promise<ChatOllama> {
+  async build(): Promise<ChatOllama> {
     console.time("Chat model build");
     try {
       this.chatModel = new ChatOllama({
@@ -56,137 +58,108 @@ export default class RAG {
       });
       logger.info("Chat model is built.");
     } catch (error) {
-      logger.error("Chat model could not be builded: ", error);
+      logger.error("Chat model could not be built: ", error);
     }
     console.timeEnd("Chat model build");
     return this.chatModel;
   }
 
-  /**
-   * Validate if the determined tool is appropriate for the user's input.
-   * @param userInput User input string
-   * @param toolName Tool name determined by the AI
-   * @returns Promise<boolean> Validation result
-   */
-  public async validateToolSelection(
+  private generatePrompt(
+    messages: (SystemMessage | HumanMessage | AIMessage)[]
+  ): ChatPromptTemplate {
+    return ChatPromptTemplate.fromMessages(messages);
+  }
+
+  private async invokePrompt(prompt: ChatPromptTemplate): Promise<string> {
+    try {
+      const result = await prompt
+        .pipe(this.chatModel)
+        .pipe(new StringOutputParser())
+        .invoke({});
+      return result;
+    } catch (error) {
+      logger.error("Prompt invocation failed: ", error);
+      throw error;
+    }
+  }
+
+  async validateToolSelection(
     userInput: string,
     toolName: string
   ): Promise<boolean> {
     console.time("validateToolSelection");
     try {
-      const prompt = `You need to validate if the selected tool is appropriate for the given user input. Respond with 'yes' if the tool is appropriate and 'no' otherwise.
-      \n User input: "${userInput}". \n Selected tool: "${this.aiTools.getTool(
-        toolName
-      )}".`;
-
-      const response = await this.chatModel.invoke([new SystemMessage(prompt)]);
-      const validationResponse = response.content.toString().trim();
-      const isValid = validationResponse.toLowerCase() === "yes";
+      const prompt = this.generatePrompt([
+        new SystemMessage(
+          `You need to validate if the selected tool is appropriate for the given user input. Respond with 'yes' if the tool is appropriate and 'no' otherwise.\n User input: "${userInput}". \n Selected tool: "${this.aiTools.getTool(
+            toolName
+          )}".`
+        ),
+      ]);
+      const response = await this.invokePrompt(prompt);
       console.timeEnd("validateToolSelection");
-      return isValid;
+      return response.trim().toLowerCase() === "yes";
     } catch (error) {
       logger.error("Tool selection could not be validated: ", error);
       return false;
     }
   }
 
-  /**
-   * Determine the appropriate tool based on user input.
-   * @param userInput User input string
-   * @returns Promise<string> Tool name
-   */
-  public async determineTool(userInput: string): Promise<string> {
+  async determineTool(userInput: string): Promise<string> {
     console.time("determineTool");
-    try {
-      let toolName = "default";
-      let attempts = 1;
-      const maxAttempts = 3;
+    const maxAttempts = 3;
+    const tools = this.aiTools.listToolNames();
 
-      while (attempts <= maxAttempts) {
-        const prompt = `Based on the user input, determine the most appropriate tool to use from the available tools:\n${this.aiTools.listTools()}
-        \n When you determine respond with the tool's name. 
-        Otherwise, respond with 'default'. \n  User input: "${userInput}". Response should be single word only.`;
-
-        const response = await this.chatModel.invoke([
-          new SystemMessage(prompt),
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const prompt = this.generatePrompt([
+          new SystemMessage(
+            `Based on the user input, determine the most appropriate tool from the available tools:\n${tools})}\nPlease respond with the tool's name or 'default'.\nUser input: "${userInput}". Response with tool name only.`
+          ),
         ]);
-        toolName = response.content.toString().trim();
+        const toolName = (await this.invokePrompt(prompt)).trim();
 
-        const isValidTool = await this.validateToolSelection(
-          userInput,
-          toolName
-        );
-
-        logger.info(
-          `${toolName} is ${
-            isValidTool ? "valid" : "not valid"
-          } tool according to user's input.${
-            !isValidTool ? ` Retrying.. ${attempts}/${maxAttempts}` : ""
-          }`
-        );
-
-        if (isValidTool) {
+        if (await this.validateToolSelection(userInput, toolName)) {
+          logger.info(`${toolName} is a valid tool for the user's input.`);
           console.timeEnd("determineTool");
           return toolName;
         }
-
-        attempts++;
+        logger.info(
+          `Invalid tool selection. Retrying.. ${attempt}/${maxAttempts}`
+        );
+      } catch (error) {
+        logger.error("Tool could not be determined: ", error);
       }
-
-      console.timeEnd("determineTool");
-      return "default";
-    } catch (error) {
-      logger.error("Tool could not be determined: ", error);
-      return "default";
     }
+
+    console.timeEnd("determineTool");
+    return "default";
   }
 
-  /**
-   * Build a tool based on user input and existing tool configuration.
-   * @param userInput User input string
-   * @param tool Existing tool configuration
-   * @returns Promise<ITool | null> Built tool options or null on failure
-   */
-  public async buildTool(
-    userInput: string,
-    tool: ITool
-  ): Promise<ITool | null> {
+  async buildTool(userInput: string, tool: ITool): Promise<ITool | null> {
     console.time("buildTool");
     const maxAttempts = 3;
-    let attempts = 0;
 
-    while (attempts < maxAttempts) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
-        let result = "";
-        const prompt = ChatPromptTemplate.fromMessages([
-          new SystemMessage(promptText),
+        const prompt = this.generatePrompt([
+          new SystemMessage(
+            `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`
+          ),
           new HumanMessage(
             `User input: ${userInput}. Tool JSON: ${tool.toString()}.`
           ),
         ]);
 
-        const chain = prompt
-          .pipe(this.chatModel)
-          .pipe(new StringOutputParser());
-        result = await chain.invoke({});
-
-        try {
-          const parsedToolOptions: ITool = JSON.parse(result);
-          logger.info("Tool build is success.");
-          console.timeEnd("buildTool");
-          return parsedToolOptions;
-        } catch (error) {
-          logger.error("Error processing tool:", error);
-        }
+        const result = await this.invokePrompt(prompt);
+        const parsedToolOptions: ITool = JSON.parse(result);
+        logger.info("Tool build is successful.");
+        console.timeEnd("buildTool");
+        return parsedToolOptions;
       } catch (error) {
         logger.error("Tool could not be built: ", error);
-      }
-
-      attempts++;
-      if (attempts < maxAttempts) {
         logger.warn(
-          `Retrying buildTool... Attempt ${attempts + 1} of ${maxAttempts}`
+          `Retrying buildTool... Attempt ${attempt + 1} of ${maxAttempts}`
         );
       }
     }
@@ -195,63 +168,108 @@ export default class RAG {
     return null;
   }
 
-  /**
-   * Evaluate JSON data and provide a short outcome based on its contents.
-   * @param data JSON input string
-   * @returns Promise<string> Evaluated outcome
-   */
-  public async jsonEvaluator(
+  async jsonEvaluator(
     data: string,
     question?: string
   ): Promise<IterableReadableStream<string>> {
     console.time("jsonEvaluator");
     try {
-      const promptText = `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your response.`;
-
-      const prompt = ChatPromptTemplate.fromMessages([
-        new SystemMessage(promptText),
+      const prompt = this.generatePrompt([
+        new SystemMessage(
+          `You are JSON evaluator, your mission is to receive JSON response of an API response and you will read the data and give a summary of the data, nothing else. Please, use the user input as the base information, don't change data, keep it short. Don't mention 'JSON' keyword in your response.`
+        ),
         new AIMessage(`Data: ${data}.`),
         new HumanMessage(`Question: ${question}`),
       ]);
 
-      const chain: Promise<IterableReadableStream<string>> = prompt
+      const chain = prompt
         .pipe(this.chatModel)
         .pipe(new StringOutputParser())
         .stream({});
-
       console.timeEnd("jsonEvaluator");
-      logger.log("Tool JSON evaluation is success.");
+      logger.log("Tool JSON evaluation is successful.");
       return chain;
     } catch (error) {
       logger.error("Tool JSON could not be evaluated: ", error);
     }
   }
 
-  /**
-   * Optimize a text query for AI note application.
-   * @param query Query string to optimize
-   * @returns Promise<string> Optimized query
-   */
-  public async queryOptimizer(query: string): Promise<string> {
+  async queryOptimizer(query: string): Promise<string> {
     console.time("queryOptimizer");
     try {
-      const promptText = `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`;
-
-      const prompt = ChatPromptTemplate.fromMessages([
-        new SystemMessage(promptText),
+      const prompt = this.generatePrompt([
+        new SystemMessage(
+          `You are text input optimizer for AI note application, your mission is to prepare a shorter version of the given text input for vector database search. Optimize for performance. Respond only with very short text, nothing else.`
+        ),
         new HumanMessage(`Query to optimize = ${query}.`),
       ]);
 
-      const chain = await prompt
-        .pipe(this.chatModel)
-        .pipe(new StringOutputParser())
-        .invoke({});
-
+      const result = await this.invokePrompt(prompt);
       console.timeEnd("queryOptimizer");
-      logger.log("Query optimization is success.");
-      return chain;
+      logger.log("Query optimization is successful.");
+      return result;
     } catch (error) {
       logger.error("Query could not be optimized for AI. ", error);
     }
   }
+
+  protected async convertResponseToString(
+    response: string | IterableReadableStream<String | BaseMessageChunk>
+  ) {
+    if (typeof response === "string") {
+      return response;
+    } else {
+      let responseString = "";
+      for await (const chunk of response) {
+        const chunkContent =
+          typeof chunk === "string"
+            ? chunk
+            : (chunk as BaseMessageChunk).content;
+        responseString += chunkContent;
+        process.stdout.write(chunkContent.toString()); // Use process.stdout.write to avoid new lines
+      }
+      console.log();
+      return responseString;
+    }
+  }
+
+  protected isFollowUpQuestion(
+    userInput: string,
+    lastToolUsed: string | null,
+    lastToolData: any,
+    toolKeywords: string[]
+  ): boolean {
+    if (lastToolUsed && lastToolData) {
+      const pattern = new RegExp(toolKeywords.join("|"), "i");
+      return pattern.test(userInput);
+    }
+    return false;
+  }
+  
+
+  protected async handleFollowUpQuestion(
+    userInput: string,
+    toolName: string,
+    lastToolUsed: string | null,
+    lastToolData: any,
+    aiToolsModule: any, // Adjust the type based on your AiToolsModule definition,
+    isLLMInit: boolean,
+  ): Promise<IterableReadableStream<String>> {
+    if (lastToolUsed === toolName && lastToolData) {
+      const data = lastToolData;
+      const prompt = `Handle the follow-up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
+      const response = await aiToolsModule.handleDefaultTool(prompt, isLLMInit);
+      return response;
+    }
+  
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          "I'm not sure how to answer that based on the previous data."
+        );
+        controller.close();
+      },
+    }) as IterableReadableStream<String>;
+  }
+  
 }
