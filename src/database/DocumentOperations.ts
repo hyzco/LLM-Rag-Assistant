@@ -14,7 +14,7 @@ export class DocumentOperations {
       if (!this.vectorStore) {
         throw new Error("Database not connected for document operations.");
       }
-      await this.vectorStore.addDocuments([document]);
+      this.vectorStore.addDocuments([document]);
       return true;
     } catch (err) {
       console.error(err);

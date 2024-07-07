@@ -1,6 +1,7 @@
 import tracer from "tracer";
 import colors from "colors";
-
+import fs from "fs";
+import path from "path";
 const logger = tracer.colorConsole({
   format: [
     "{{timestamp}} <{{title}}> {{message}} (in {{file}}:{{line}})", //default format
@@ -14,6 +15,11 @@ const logger = tracer.colorConsole({
   preprocess: function (data) {
     data.title = data.title.toUpperCase();
   },
+  // transport: function(data) {
+  //   fs.appendFile(path.resolve('src/logs/file.log'), data.rawoutput + '\n', err => {
+  //     if (err) throw err
+  //   })
+  // }
 });
 
 export default logger;

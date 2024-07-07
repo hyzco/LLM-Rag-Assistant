@@ -1,4 +1,4 @@
-import { Client } from "cassandra-driver";
+import cassandra, { Client } from "cassandra-driver";
 import path from "path";
 
 export class CassandraClient {
@@ -6,22 +6,25 @@ export class CassandraClient {
   private static _secureConnectBundle: string;
   public static client: Client;
 
-  public static initialize() {
+  public static initialize(): Client {
     if (!this._keySpace || !this._secureConnectBundle) {
       throw new Error(
         "First set keySpace and path to your secureConnectBundle."
       );
     }
+    const authProvider = new cassandra.auth.PlainTextAuthProvider(
+      "token",
+      process.env["CASSANDRA_TOKEN"]
+    );
 
     this.client = new Client({
       cloud: {
         secureConnectBundle: path.resolve(this._secureConnectBundle),
       },
-      credentials: {
-        username: process.env.ASTRA_DB_UNAME,
-        password: process.env.ASTRA_DB_PW,
-      },
+      authProvider,
     });
+
+    return this.client;
   }
 
   public static set keySpace(keySpace: string) {

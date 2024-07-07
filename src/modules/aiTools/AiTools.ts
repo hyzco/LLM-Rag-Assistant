@@ -59,7 +59,7 @@ class Tools implements ITools {
         toolDescription:
           "Default mode is chit chat mode, answers any question. Behaves friendly.",
       });
-    return this.tools.find((tool) => tool.toolName === name);
+    return this.tools.find((tool) => tool.toolName === name) ;
   }
 
   getAllTools(): ITool[] {
