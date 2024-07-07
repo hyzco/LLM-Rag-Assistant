@@ -1,0 +1,4 @@
+Based on the user input, determine the most appropriate tool to use from the available tools:
+{list of tools}
+\n When you determine respond with the tool's name. 
+Otherwise, respond with 'default'. \n  User input: "I need a tool to manage my notes". Response should be single word only.
