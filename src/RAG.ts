@@ -12,6 +12,7 @@ import NoteManagementPlugin from "./plugins/NoteManagement.plugin";
 import { CassandraClient } from "./database/CassandraClient";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import logger from "./utils/Logger";
+import CodeAnalyzerPlugin from "./plugins/CodeAnalyzer.plugin";
 
 export default class RAG {
   public aiTools: AiTools;
@@ -24,9 +25,9 @@ export default class RAG {
   constructor() {
     console.time("RAG constructor");
     try {
-      CassandraClient.keySpace = "eva_chat";
+      CassandraClient.keySpace = process.env["ASTRA_DB_KEY_SPACE"];
       CassandraClient.secureConnectBundle =
-        "config/secure-connect-eva-chat.zip";
+        process.env["ASTRA_DB_SECURE_BUNDLE_PATH"];
 
       const db = CassandraVectorDatabase.getInstance();
 
@@ -144,9 +145,12 @@ export default class RAG {
    * Build a tool based on user input and existing tool configuration.
    * @param userInput User input string
    * @param tool Existing tool configuration
-   * @returns Promise<any | null> Built tool options or null on failure
+   * @returns Promise<ITool | null> Built tool options or null on failure
    */
-  public async buildTool(userInput: string, tool: ITool): Promise<any | null> {
+  public async buildTool(
+    userInput: string,
+    tool: ITool
+  ): Promise<ITool | null> {
     console.time("buildTool");
     const maxAttempts = 3;
     let attempts = 0;
@@ -154,22 +158,22 @@ export default class RAG {
     while (attempts < maxAttempts) {
       try {
         const promptText = `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`;
-
+        let result = "";
         const prompt = ChatPromptTemplate.fromMessages([
           new SystemMessage(promptText),
           new HumanMessage(
-            `User input JSON: ${userInput}. Tool JSON: ${tool.toString()}.`
+            `User input: ${userInput}. Tool JSON: ${tool.toString()}.`
           ),
         ]);
 
         const chain = prompt
           .pipe(this.chatModel)
           .pipe(new StringOutputParser());
-        const result = await chain.invoke({});
+        result = await chain.invoke({});
 
         try {
-          const parsedToolOptions = JSON.parse(result);
-          logger.log("Tool build is success.");
+          const parsedToolOptions: ITool = JSON.parse(result);
+          logger.info("Tool build is success.");
           console.timeEnd("buildTool");
           return parsedToolOptions;
         } catch (error) {

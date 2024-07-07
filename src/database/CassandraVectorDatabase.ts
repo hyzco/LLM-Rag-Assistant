@@ -4,6 +4,7 @@ import { CassandraCRUDOperations } from "./CassandraCRUDOperations";
 import { CassandraClient } from "./CassandraClient";
 import { DocumentOperations } from "./DocumentOperations";
 import { VectorSearch } from "./VectorSearch";
+import { Client } from "cassandra-driver";
 
 export default class CassandraVectorDatabase {
   private static _instance: CassandraVectorDatabase;
@@ -21,6 +22,7 @@ export default class CassandraVectorDatabase {
   public crud: CassandraCRUDOperations;
   public documentOperations: DocumentOperations;
   public vectorSearch: VectorSearch;
+  public client: Client;
 
   private constructor() {
     CassandraClient.initialize();
@@ -52,9 +54,34 @@ export default class CassandraVectorDatabase {
       // batchSize: 1,
     };
 
-    this.vectorStore = new CassandraStore(this.embeddings, config);
+    const codeConfig = {
+      ...config,
+      table: "code_documents",
+      indices: [
+        { name: "source", value: "(source)" },
+        { name: "language", value: "(language)" },
+      ],
+      primaryKey: {
+        name: "id",
+        type: "int",
+      },
+      metadataColumns: [
+        {
+          name: "source",
+          type: "text",
+        },
+        {
+          name: "language",
+          type: "text",
+        },
+      ],
+    };
+
+    this.vectorStore = new CassandraStore(this.embeddings, codeConfig);
     this.documentOperations = new DocumentOperations(this.vectorStore);
     this.vectorSearch = new VectorSearch(this.vectorStore);
+    this.client = CassandraClient.initialize();
+    this.crud = new CassandraCRUDOperations(this.client);
   }
 
   public static getInstance() {
