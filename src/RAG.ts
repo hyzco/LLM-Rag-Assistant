@@ -64,25 +64,6 @@ export default class RAG {
     return this.chatModel;
   }
 
-  private generatePrompt(
-    messages: (SystemMessage | HumanMessage | AIMessage)[]
-  ): ChatPromptTemplate {
-    return ChatPromptTemplate.fromMessages(messages);
-  }
-
-  private async invokePrompt(prompt: ChatPromptTemplate): Promise<string> {
-    try {
-      const result = await prompt
-        .pipe(this.chatModel)
-        .pipe(new StringOutputParser())
-        .invoke({});
-      return result;
-    } catch (error) {
-      logger.error("Prompt invocation failed: ", error);
-      throw error;
-    }
-  }
-
   async validateToolSelection(
     userInput: string,
     toolName: string
@@ -235,17 +216,17 @@ export default class RAG {
 
   protected isFollowUpQuestion(
     userInput: string,
+    toolName: string,
+    toolKeywords: string[],
     lastToolUsed: string | null,
-    lastToolData: any,
-    toolKeywords: string[]
+    lastToolData: any
   ): boolean {
-    if (lastToolUsed && lastToolData) {
+    if (lastToolUsed && lastToolData && lastToolUsed === toolName) {
       const pattern = new RegExp(toolKeywords.join("|"), "i");
       return pattern.test(userInput);
     }
     return false;
   }
-  
 
   protected async handleFollowUpQuestion(
     userInput: string,
@@ -253,15 +234,16 @@ export default class RAG {
     lastToolUsed: string | null,
     lastToolData: any,
     aiToolsModule: any, // Adjust the type based on your AiToolsModule definition,
-    isLLMInit: boolean,
+    isLLMInit: boolean
   ): Promise<IterableReadableStream<String>> {
+    console.log(lastToolData, " -- ", toolName, " -- lastTool", lastToolUsed);
     if (lastToolUsed === toolName && lastToolData) {
       const data = lastToolData;
       const prompt = `Handle the follow-up question after tool usage based on user input and tool data. User input: ${userInput} Previous tool data: ${data}. Respond short, precise.`;
       const response = await aiToolsModule.handleDefaultTool(prompt, isLLMInit);
       return response;
     }
-  
+
     return new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -271,5 +253,23 @@ export default class RAG {
       },
     }) as IterableReadableStream<String>;
   }
-  
+
+  private generatePrompt(
+    messages: (SystemMessage | HumanMessage | AIMessage)[]
+  ): ChatPromptTemplate {
+    return ChatPromptTemplate.fromMessages(messages);
+  }
+
+  private async invokePrompt(prompt: ChatPromptTemplate): Promise<string> {
+    try {
+      const result = await prompt
+        .pipe(this.chatModel)
+        .pipe(new StringOutputParser())
+        .invoke({});
+      return result;
+    } catch (error) {
+      logger.error("Prompt invocation failed: ", error);
+      throw error;
+    }
+  }
 }
