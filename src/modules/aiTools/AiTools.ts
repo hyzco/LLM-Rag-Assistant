@@ -59,7 +59,7 @@ class Tools implements ITools {
         toolDescription:
           "Default mode is chit chat mode, answers any question. Behaves friendly.",
       });
-    return this.tools.find((tool) => tool.toolName === name) ;
+    return this.tools.find((tool) => tool.toolName === name);
   }
 
   getAllTools(): ITool[] {
@@ -92,6 +92,15 @@ export default class AiTools extends Tools {
           `- ToolName: ${tool.toolName}; ToolDescription: ${tool.toolDescription};`
       )
       .join("\n");
+  }
+
+  public listToolNames() {
+    const allTools = super.getAllTools();
+    let toolNames = "";
+    for(const tools of allTools){
+      toolNames += `Tool name: ${tools.toolName} \n`
+    }
+    return toolNames;
   }
 
   private listRules() {
