@@ -25,63 +25,67 @@ export default class CassandraVectorDatabase {
   public client: Client;
 
   private constructor() {
-    CassandraClient.initialize();
+    try {
+      CassandraClient.initialize();
 
-    const config = {
-      serviceProviderArgs: {
-        astra: {
-          endpoint: process.env.CASSANDRA_HOST,
-          clientId: process.env.CASSANDRA_CLIENT_ID,
-          secret: process.env.CASSANDRA_SECRET,
-          token: process.env.CASSANDRA_TOKEN,
+      const config = {
+        serviceProviderArgs: {
+          astra: {
+            endpoint: process.env.CASSANDRA_HOST,
+            clientId: process.env.CASSANDRA_CLIENT_ID,
+            secret: process.env.CASSANDRA_SECRET,
+            token: process.env.CASSANDRA_TOKEN,
+          },
         },
-      },
-      keyspace: CassandraClient.keySpace,
-      dimensions: 4096,
-      table: "eva_notes",
-      indices: [{ name: "title", value: "(title)" }],
-      primaryKey: {
-        name: "id",
-        type: "int",
-      },
-      metadataColumns: [
-        {
-          name: "title",
-          type: "text",
+        keyspace: CassandraClient.keySpace,
+        dimensions: 4096,
+        table: "eva_notes",
+        indices: [{ name: "title", value: "(title)" }],
+        primaryKey: {
+          name: "id",
+          type: "int",
         },
-      ],
-      maxConcurrency: 25,
-      // batchSize: 1,
-    };
+        metadataColumns: [
+          {
+            name: "title",
+            type: "text",
+          },
+        ],
+        maxConcurrency: 25,
+        // batchSize: 1,
+      };
 
-    const codeConfig = {
-      ...config,
-      table: "code_documents",
-      indices: [
-        { name: "source", value: "(source)" },
-        { name: "language", value: "(language)" },
-      ],
-      primaryKey: {
-        name: "id",
-        type: "int",
-      },
-      metadataColumns: [
-        {
-          name: "source",
-          type: "text",
+      const codeConfig = {
+        ...config,
+        table: "code_documents",
+        indices: [
+          { name: "source", value: "(source)" },
+          { name: "language", value: "(language)" },
+        ],
+        primaryKey: {
+          name: "id",
+          type: "int",
         },
-        {
-          name: "language",
-          type: "text",
-        },
-      ],
-    };
+        metadataColumns: [
+          {
+            name: "source",
+            type: "text",
+          },
+          {
+            name: "language",
+            type: "text",
+          },
+        ],
+      };
 
-    this.vectorStore = new CassandraStore(this.embeddings, codeConfig);
-    this.documentOperations = new DocumentOperations(this.vectorStore);
-    this.vectorSearch = new VectorSearch(this.vectorStore);
-    this.client = CassandraClient.initialize();
-    this.crud = new CassandraCRUDOperations(this.client);
+      this.vectorStore = new CassandraStore(this.embeddings, codeConfig);
+      this.documentOperations = new DocumentOperations(this.vectorStore);
+      this.vectorSearch = new VectorSearch(this.vectorStore);
+      this.client = CassandraClient.initialize();
+      this.crud = new CassandraCRUDOperations(this.client);
+    } catch (error) {
+      console.error("Error while initializing Cassandra client: " + error);
+    }
   }
 
   public static getInstance() {

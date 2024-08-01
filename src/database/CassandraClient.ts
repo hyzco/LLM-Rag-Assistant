@@ -12,19 +12,24 @@ export class CassandraClient {
         "First set keySpace and path to your secureConnectBundle."
       );
     }
-    const authProvider = new cassandra.auth.PlainTextAuthProvider(
-      "token",
-      process.env["CASSANDRA_TOKEN"]
-    );
 
-    this.client = new Client({
-      cloud: {
-        secureConnectBundle: path.resolve(this._secureConnectBundle),
-      },
-      authProvider,
-    });
+    try {
+      const authProvider = new cassandra.auth.PlainTextAuthProvider(
+        "token",
+        process.env["CASSANDRA_TOKEN"]
+      );
 
-    return this.client;
+      this.client = new Client({
+        cloud: {
+          secureConnectBundle: path.resolve(this._secureConnectBundle),
+        },
+        authProvider,
+      });
+
+      return this.client;
+    } catch (error) {
+      throw new Error("Error while initializing Cassandra client: " + error);
+    }
   }
 
   public static set keySpace(keySpace: string) {

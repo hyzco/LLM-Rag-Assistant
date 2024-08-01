@@ -1,10 +1,14 @@
 import { BaseMessageChunk, HumanMessage } from "@langchain/core/messages";
 import inquirer, { PromptModule } from "inquirer";
-import RAG from "./RAG";
+import RAG from "../RAG";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
-import WebSocketModule from "./modules/WebSocketModule";
-import AiToolsModule from "./modules/aiTools/AiToolsModule";
-import logger from "./utils/Logger";
+import WebSocketModule from "../modules/WebSocketModule";
+import AiToolsModule from "../modules/aiTools/AiToolsModule";
+import logger from "../utils/Logger";
+import ChatTools from "./modules/ChatTools";
+import ChatToolHandlers from "./modules/ChatToolHandlers";
+import { ITool } from "../modules/aiTools/AiTools";
+import ToolRegistry, { Registry } from "../modules/aiTools/ToolRegistry";
 
 const TOOL_NAMES = {
   WEATHER_TOOL: "weather_tool",
@@ -29,12 +33,49 @@ export default class Chat extends RAG {
   protected inquirer: PromptModule;
   protected webSocketModule: WebSocketModule;
   protected aiToolsModule: AiToolsModule;
+  private toolRegistry = new ToolRegistry();
+  private chatToolHandlers: ChatToolHandlers;
 
   constructor() {
     super();
     this.inquirer = inquirer.createPromptModule();
     this.webSocketModule = new WebSocketModule(8080);
-    this.aiToolsModule = new AiToolsModule(this);
+    this.aiToolsModule = new AiToolsModule(this, this.toolRegistry);
+
+    const chatTools = new ChatTools();
+    this.chatToolHandlers = new ChatToolHandlers(this);
+    this.setAiTools(chatTools);
+
+    const toolRegistries = [
+      {
+        tool: chatTools.weatherTool(),
+        handler: this.chatToolHandlers.handleWeatherTool.bind(
+          this.chatToolHandlers
+        ),
+      } as Registry,
+      {
+        tool: chatTools.noteTool(),
+        handler: this.chatToolHandlers.handleNoteTool.bind(
+          this.chatToolHandlers
+        ),
+      } as Registry,
+      {
+        tool: chatTools.courseTool(),
+        handler: this.chatToolHandlers.handleCourseTool.bind(
+          this.chatToolHandlers
+        ),
+      } as Registry,
+      {
+        tool: chatTools.timeTool(),
+        handler: this.chatToolHandlers.handleTimeTool.bind(
+          this.chatToolHandlers
+        ),
+      } as Registry,
+    ];
+
+    toolRegistries.forEach((registry: Registry) => {
+      this.toolRegistry.registerTool(registry);
+    });
   }
 
   // Process user input with context tracking
@@ -47,7 +88,6 @@ export default class Chat extends RAG {
       if (toolName) {
         logger.log(`Determined tool: ${toolName}`);
         const response = await this.getResponse(toolName, userInput);
-        logger.log("response: ", response);
         if (response) {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
@@ -75,19 +115,35 @@ export default class Chat extends RAG {
     } else {
       switch (toolName.trim()) {
         case TOOL_NAMES.WEATHER_TOOL:
-          response = await this.aiToolsModule.handleWeatherTool(userInput);
+          response = await this.aiToolsModule.handleToolInput<ITool>(
+            userInput,
+            TOOL_NAMES.WEATHER_TOOL
+          );
+
           break;
         case TOOL_NAMES.CALENDAR_TOOL:
           logger.log("Tool has no method definition.");
           break;
         case TOOL_NAMES.NOTE_TOOL:
-          response = await this.aiToolsModule.handleNoteTool(userInput);
+          response = await this.aiToolsModule.handleToolInput<ITool>(
+            userInput,
+            TOOL_NAMES.NOTE_TOOL
+          );
+
           break;
         case TOOL_NAMES.COURSE_TOOL:
-          response = await this.aiToolsModule.handleCourseTool(userInput);
+          response = await this.aiToolsModule.handleToolInput<ITool>(
+            userInput,
+            TOOL_NAMES.COURSE_TOOL
+          );
+
           break;
         case TOOL_NAMES.TIME_TOOL:
-          response = await this.aiToolsModule.handleTimeTool(userInput);
+          response = await this.aiToolsModule.handleToolInput<ITool>(
+            userInput,
+            TOOL_NAMES.TIME_TOOL
+          );
+
           break;
         default:
           response = await this.aiToolsModule.handleDefaultTool(

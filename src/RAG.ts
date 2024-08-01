@@ -14,16 +14,8 @@ import { IterableReadableStream } from "@langchain/core/utils/stream";
 import logger from "./utils/Logger";
 import { BaseMessageChunk } from "@langchain/core/messages";
 
-const TOOL_NAMES = {
-  WEATHER_TOOL: "weather_tool",
-  CALENDAR_TOOL: "calendar_tool",
-  NOTE_TOOL: "note_tool",
-  COURSE_TOOL: "course_tool",
-  TIME_TOOL: "time_tool",
-};
-
 export default class RAG {
-  public aiTools: AiTools;
+  public aiTools: AiTools<ITool>;
   public noteManagementPlugin: NoteManagementPlugin;
   public chatModel: ChatOllama;
   public conversationHistory: (HumanMessage | AIMessage | SystemMessage)[];
@@ -41,7 +33,6 @@ export default class RAG {
       this.chatModel = null;
       this.dialogRounds = 10;
       this.conversationHistory = [];
-      this.aiTools = new AiTools();
       this.noteManagementPlugin = new NoteManagementPlugin(this.vectorDatabase);
     } catch (error) {
       logger.error("RAG Class:", error);
@@ -125,7 +116,7 @@ export default class RAG {
       try {
         const prompt = this.generatePrompt([
           new SystemMessage(
-            `You are JSON modifier, your mission is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`
+            `You are JSON modifier, your job is to receive Tool JSON and fill in the missing values according to user input. Do not add new attributes, preserve the structure, only fill. Respond with the JSON only, nothing else.`
           ),
           new HumanMessage(
             `User input: ${userInput}. Tool JSON: ${tool.toString()}.`
@@ -194,6 +185,16 @@ export default class RAG {
     }
   }
 
+  protected setAiTools = (aiTools: AiTools<ITool>) => {
+    this.aiTools = aiTools;
+  };
+
+  protected setSystemMessage(message: string) {
+    if (this.conversationHistory.length < 1) {
+      this.conversationHistory.push(new SystemMessage(message));
+    }
+  }
+
   protected async convertResponseToString(
     response: string | IterableReadableStream<String | BaseMessageChunk>
   ) {
@@ -219,7 +220,7 @@ export default class RAG {
     toolName: string,
     toolKeywords: string[],
     lastToolUsed: string | null,
-    lastToolData: any
+    lastToolData: string
   ): boolean {
     if (lastToolUsed && lastToolData && lastToolUsed === toolName) {
       const pattern = new RegExp(toolKeywords.join("|"), "i");

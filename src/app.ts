@@ -1,5 +1,5 @@
 // app.ts or index.ts (main entry point)
-import Chat from "./chat.RAG";
+import Chat from "./chat/chat.RAG";
 import initializeApplication from "./config/Initializers";
 import logger from "./utils/Logger";
 
@@ -30,4 +30,8 @@ class App extends Chat {
   }
 }
 
-new App();
+try {
+  new App();
+} catch (e) {
+  console.log("Error while initializing the app: ", e);
+}
