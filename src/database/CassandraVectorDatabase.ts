@@ -1,4 +1,4 @@
-import { OllamaEmbeddings } from "@langchain/community/embeddings/ollama";
+import { OllamaEmbeddings } from "@langchain/ollama";
 import { CassandraStore } from "@langchain/community/vectorstores/cassandra";
 import { CassandraCRUDOperations } from "./CassandraCRUDOperations";
 import { CassandraClient } from "./CassandraClient";
@@ -13,7 +13,7 @@ export default class CassandraVectorDatabase {
     model: process.env.DEFAULT_MODEL,
     baseUrl: process.env.OLLAMA_HOST,
     requestOptions: {
-      useMMap: true,
+      useMmap: true,
       numThread: 4,
       numGpu: 1,
     },
@@ -26,7 +26,11 @@ export default class CassandraVectorDatabase {
 
   private constructor() {
     try {
-      CassandraClient.initialize();
+      try {
+        CassandraClient.initialize();
+      } catch (e) {
+        console.log("Error while initializing Cassandra client.");
+      }
 
       const config = {
         serviceProviderArgs: {
@@ -84,13 +88,17 @@ export default class CassandraVectorDatabase {
       this.client = CassandraClient.initialize();
       this.crud = new CassandraCRUDOperations(this.client);
     } catch (error) {
-      console.error("Error while initializing Cassandra client: " + error);
+      console.error("Error while initializing Cassandra client.");
     }
   }
 
   public static getInstance() {
     if (!this._instance) {
-      this._instance = new CassandraVectorDatabase();
+      try {
+        this._instance = new CassandraVectorDatabase();
+      } catch (e) {
+        console.log("Error while initializing Cassandra client.");
+      }
     }
     return this._instance;
   }

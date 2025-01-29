@@ -1,8 +1,9 @@
-import { ChatOllama } from "@langchain/community/chat_models/ollama";
+import { ChatOllama } from "@langchain/ollama";
 import {
   HumanMessage,
   AIMessage,
   SystemMessage,
+  BaseMessageChunk,
 } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -12,7 +13,6 @@ import NoteManagementPlugin from "./plugins/NoteManagement.plugin";
 import { CassandraClient } from "./database/CassandraClient";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import logger from "./utils/Logger";
-import { BaseMessageChunk } from "@langchain/core/messages";
 
 export default class RAG {
   public aiTools: AiTools<ITool>;
@@ -65,10 +65,11 @@ export default class RAG {
         new SystemMessage(
           `You need to validate if the selected tool is appropriate for the given user input. Respond with 'yes' if the tool is appropriate and 'no' otherwise.\n User input: "${userInput}". \n Selected tool: "${this.aiTools.getTool(
             toolName
-          )}".`
+          )}". \n Respond with 'yes' or 'no'.`
         ),
       ]);
       const response = await this.invokePrompt(prompt);
+      console.log("Tool selection validation response: ", response);
       console.timeEnd("validateToolSelection");
       return response.trim().toLowerCase() === "yes";
     } catch (error) {
@@ -86,19 +87,19 @@ export default class RAG {
       try {
         const prompt = this.generatePrompt([
           new SystemMessage(
-            `Based on the user input, determine the most appropriate tool from the available tools:\n${tools})}\nPlease respond with the tool's name or 'default'.\nUser input: "${userInput}". Response with tool name only.`
+            `Based on the user input, determine the most appropriate tool from the available tools:\n${tools})}\nPlease respond with the tool's name or if you can't determine then respond 'default' which indicates standard conversation mode.\nUser input: "${userInput}". Response with tool name only. Be straightforward.`
           ),
         ]);
-        const toolName = (await this.invokePrompt(prompt)).trim();
-
-        if (await this.validateToolSelection(userInput, toolName)) {
-          logger.info(`${toolName} is a valid tool for the user's input.`);
-          console.timeEnd("determineTool");
+        const toolName = await this.invokePrompt(prompt);
+        console.log("Tool name: ", toolName);
+        // if (await this.validateToolSelection(userInput, toolName)) {
+          // logger.info(`${toolName} is a valid tool for the user's input.`);
+          // console.timeEnd("determineTool");
           return toolName;
-        }
-        logger.info(
-          `Invalid tool selection. Retrying.. ${attempt}/${maxAttempts}`
-        );
+        // }
+        // logger.info(
+          // `Invalid tool selection. Retrying.. ${attempt}/${maxAttempts}`
+        // );
       } catch (error) {
         logger.error("Tool could not be determined: ", error);
       }
@@ -196,7 +197,7 @@ export default class RAG {
   }
 
   protected async convertResponseToString(
-    response: string | IterableReadableStream<String | BaseMessageChunk>
+    response: string | IterableReadableStream<string | BaseMessageChunk>
   ) {
     if (typeof response === "string") {
       return response;
@@ -208,7 +209,13 @@ export default class RAG {
             ? chunk
             : (chunk as BaseMessageChunk).content;
         responseString += chunkContent;
-        process.stdout.write(chunkContent.toString()); // Use process.stdout.write to avoid new lines
+        if ((chunkContent as string).includes("<think>")) {
+          process.stdout.write("Thinking...");
+        }
+        if ((chunkContent as string).includes("</think>")) {
+          process.stdout.write("Completed Thinking...");
+        }
+        // process.stdout.write(chunkContent.toString()); // Use process.stdout.write to avoid new lines
       }
       console.log();
       return responseString;
@@ -236,7 +243,7 @@ export default class RAG {
     lastToolData: any,
     aiToolsModule: any, // Adjust the type based on your AiToolsModule definition,
     isLLMInit: boolean
-  ): Promise<IterableReadableStream<String>> {
+  ): Promise<IterableReadableStream<string>> {
     console.log(lastToolData, " -- ", toolName, " -- lastTool", lastToolUsed);
     if (lastToolUsed === toolName && lastToolData) {
       const data = lastToolData;
@@ -252,21 +259,27 @@ export default class RAG {
         );
         controller.close();
       },
-    }) as IterableReadableStream<String>;
+    }) as IterableReadableStream<string>;
   }
 
   private generatePrompt(
     messages: (SystemMessage | HumanMessage | AIMessage)[]
   ): ChatPromptTemplate {
+    console.log("Prompt messages: ", messages);
     return ChatPromptTemplate.fromMessages(messages);
   }
 
   private async invokePrompt(prompt: ChatPromptTemplate): Promise<string> {
     try {
-      const result = await prompt
+      let result = await prompt
         .pipe(this.chatModel)
         .pipe(new StringOutputParser())
         .invoke({});
+      if (result.includes("<think>")) {
+        result = result.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      }
+
+      console.log("Prompt result: ", result);
       return result;
     } catch (error) {
       logger.error("Prompt invocation failed: ", error);

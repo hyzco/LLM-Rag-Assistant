@@ -56,13 +56,20 @@ export default class AiTools<T extends ITool> {
   }
 
   getTool(name: string): ITool {
-    if (name.toLowerCase() === "default")
+    console.log("(getTool) Tool name:", name);
+
+    const foundTool = this.tools.find((tool) => tool.toolName === name);
+    if (!foundTool) {
+      console.log(`Tool with name ${name} not found.`);
       return new Tool({
         toolName: "default",
         toolDescription:
-          "Default mode is chit chat mode, answers any question. Behaves friendly.",
+          "Default mode is chit chat mode, answers any question. Behaves friendly. Don't mention about tools, just be AI assistant.",
       });
-    return this.tools.find((tool) => tool.toolName === name);
+    } else {
+      console.log(`Tool with name ${name} found.`);
+      return foundTool;
+    }
   }
 
   getAllTools(): ITool[] {

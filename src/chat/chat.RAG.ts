@@ -25,7 +25,7 @@ interface Context {
 }
 
 export default class Chat extends RAG {
-  private context: Context = {
+  private readonly context: Context = {
     isLLMInit: true,
     lastToolUsed: null,
     lastToolData: null,
@@ -33,8 +33,8 @@ export default class Chat extends RAG {
   protected inquirer: PromptModule;
   protected webSocketModule: WebSocketModule;
   protected aiToolsModule: AiToolsModule;
-  private toolRegistry = new ToolRegistry();
-  private chatToolHandlers: ChatToolHandlers;
+  private readonly toolRegistry = new ToolRegistry();
+  private readonly chatToolHandlers: ChatToolHandlers;
 
   constructor() {
     super();
@@ -81,16 +81,16 @@ export default class Chat extends RAG {
   // Process user input with context tracking
   public async processUserInput(socketInput: string | null = null) {
     try {
-      const userInput =
-        socketInput != null ? socketInput : await this.getUserInput();
+      const userInput = socketInput ?? (await this.getUserInput());
       const toolName: string = await this.determineTool(userInput);
 
       if (toolName) {
         logger.log(`Determined tool: ${toolName}`);
-        const response = await this.getResponse(toolName, userInput);
+        const response = await this.getAiResponse(toolName, userInput);
         if (response) {
           this.conversationHistory.push(new HumanMessage(response));
           this.webSocketModule.sendMessageToClients(response);
+          process.stdout.write(response); // Use process.stdout.write to avoid new lines
         } else {
           logger.log(
             "We had troubles here to retrieve response from LLM. Try again."
@@ -103,12 +103,11 @@ export default class Chat extends RAG {
   }
 
   // Determine the appropriate tool and get the response
-  private async getResponse(
+  private async getAiResponse(
     toolName: string,
     userInput: string
   ): Promise<string | void> {
-    let response: string | IterableReadableStream<String | BaseMessageChunk>;
-
+    let response: string | IterableReadableStream<string | BaseMessageChunk>;
     if (this.isFollowUpQuestion(userInput, toolName)) {
       console.log("is follow up question?", "yes");
       response = await this.handleFollowUpQuestion(userInput, toolName);
@@ -157,14 +156,23 @@ export default class Chat extends RAG {
       this.context.lastToolData = response;
     }
 
-    return await this.convertResponseToString(response);
+    return this.removeThinkingMessage(
+      await this.convertResponseToString(response)
+    );
   }
 
   // Convert response to string if it is iterable
   protected convertResponseToString(
-    response: string | IterableReadableStream<String | BaseMessageChunk>
+    response: string | IterableReadableStream<string | BaseMessageChunk>
   ) {
     return super.convertResponseToString(response);
+  }
+
+  protected removeThinkingMessage(response: string): string {
+    if (response.includes("<think>")) {
+      response = response.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    }
+    return response;
   }
 
   // Check if the question is a follow-up question
