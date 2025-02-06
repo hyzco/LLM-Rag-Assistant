@@ -17,7 +17,7 @@ export interface IToolRegistry {
 export type IToolsRegistry = Map<string, Registry>;
 
 export default class ToolRegistry implements IToolRegistry {
-  private tools: IToolsRegistry = new Map();
+  private readonly tools: IToolsRegistry = new Map();
 
   getTool(name: string): Registry {
     return this.tools.get(name);
