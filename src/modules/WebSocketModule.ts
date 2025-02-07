@@ -1,6 +1,6 @@
-// WebSocketModule.ts
 import WebSocket, { WebSocketServer } from "ws";
 import logger from "../utils/Logger";
+import { IterableReadableStream } from "@langchain/core/utils/stream";
 
 interface TranscribedData {
   chunks: any[]; // Adjust as per your actual data structure
@@ -36,8 +36,10 @@ export default class WebSocketModule {
 
       ws.on("message", (message: WebSocket.Data) => {
         try {
-          const data = JSON.parse(message.toString());
-          this.handleWebSocketMessage(data, ws);
+          const parsedMessage = JSON.parse(
+            message.toString()
+          ) as WebSocketMessage;
+          this.handleWebSocketMessage(parsedMessage, ws);
         } catch (error) {
           logger.error("WebSocket error parsing incoming message:", error);
         }
@@ -52,6 +54,17 @@ export default class WebSocketModule {
         this.clients = this.clients.filter((client) => client.ws !== ws);
       });
     });
+  }
+
+  public async sendIterableReadableStream(
+    stream: IterableReadableStream<string>
+  ) {
+    if (!stream) return;
+
+    for await (const chunk of stream) {
+      this.sendMessageToClients({ type: "STREAM_CHUNK", data: chunk });
+    }
+    // this.sendMessageToClients({ type: "STREAM_END", data: "Stream ended" });
   }
 
   public sendMessageToClients(message: any) {

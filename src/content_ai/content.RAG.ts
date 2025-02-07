@@ -14,14 +14,19 @@ import ToolRegistry, { Registry } from "../modules/aiTools/ToolRegistry";
 import ContentAiTools from "./modules/ContentAiTools";
 import ContentAiToolHandlers from "./modules/ContentAiToolHandlers";
 import logger from "../utils/Logger";
+import WebSocketModule from "../modules/WebSocketModule";
 
 export default class ContentAI extends RAG {
+  protected webSocketModule: WebSocketModule;
+
   protected aiToolsModule: AiToolsModule;
   private readonly toolRegistry = new ToolRegistry();
   private readonly contentAiToolHandlers: ContentAiToolHandlers;
 
   constructor() {
     super();
+    this.webSocketModule = new WebSocketModule(5555);
+    this.webSocketModule.initializeWebSocket();
 
     const tools = new ContentAiTools();
     this.contentAiToolHandlers = new ContentAiToolHandlers(this);
@@ -30,7 +35,7 @@ export default class ContentAI extends RAG {
     // Registering tools and handlers
     const toolRegistries = [
       {
-        tool: tools.getTool("content_generator"),
+        tool: tools.getTool("content_idea_generator"),
         handler: this.contentAiToolHandlers.handleContentIdeaGeneratorTool.bind(
           this.contentAiToolHandlers
         ),
@@ -51,27 +56,36 @@ export default class ContentAI extends RAG {
   /**
    * Creates content ideas using the "content_idea_generator" tool
    */
-  protected async createContentIdeas() {
+  protected async produceContentIdeas(
+    userInput: string
+  ): Promise<IterableReadableStream<string>> {
     try {
       // Retrieve user input
-      const userInput = await super.getUserInput();
       if (!userInput) {
         throw new Error("No user input provided.");
       }
 
       // Retrieve tool and execute it
-      const { tool } = this.toolRegistry.getTool("content_generator");
+      const { tool, handler } = this.toolRegistry.getTool(
+        "content_idea_generator"
+      );
       if (!tool) {
-        throw new Error("Tool 'content_generator' not found in the registry.");
+        throw new Error(
+          "Tool 'content_idea_generator' not found in the registry."
+        );
       }
 
-      const response = await this.aiToolsModule.handleToolInput<ITool>(
-        userInput,
-        tool.toolName
-      );
+      const toolArgs = {
+        topic: "Education",
+        keywords: "Learning, Online Courses, E-learning",
+      };
+
+      tool.toolArgs = toolArgs;
+
+      const response = await handler(userInput, tool);
 
       if (response) {
-        console.log(response);
+        return response;
       } else {
         logger.warn("No response received from the 'content_generator' tool.");
       }
@@ -83,32 +97,30 @@ export default class ContentAI extends RAG {
   /**
    * Generates detailed content using the "content_production" tool
    */
-  protected async produceContent(ideaId: string) {
+  protected async produceContent(userInput: string) {
     try {
-      if (!ideaId) {
-        throw new Error("Idea ID must be provided for content production.");
-      }
-
       // Retrieve tool and execute it
-      const tool = this.toolRegistry.getTool("content_production");
+      const { tool, handler } = this.toolRegistry.getTool("content_production");
       if (!tool) {
         throw new Error("Tool 'content_production' not found in the registry.");
       }
 
       const toolArgs = {
-        ideaId,
-        wordCount: 500, // Example default value
+        topic: "Education",
+        wordCount: 100,
         tone: "informative",
         style: "blog",
         language: "en",
       };
 
-      const response = await tool.handler(JSON.stringify(toolArgs), tool.tool);
+      tool.toolArgs = toolArgs;
+
+      const response = await handler(userInput, tool);
       if (response) {
-        console.log(response);
-        // process.stdout.write(); // Write response to stdout
+        return response;
       } else {
         logger.warn("No response received from the 'content_production' tool.");
+        return "NO RESPONSE FROM AI";
       }
     } catch (error) {
       logger.error("Error in produceContent:", error);

@@ -30,7 +30,6 @@ export default class Chat extends RAG {
     lastToolUsed: null,
     lastToolData: null,
   };
-  protected inquirer: PromptModule;
   protected webSocketModule: WebSocketModule;
   protected aiToolsModule: AiToolsModule;
   private readonly toolRegistry = new ToolRegistry();
@@ -38,7 +37,6 @@ export default class Chat extends RAG {
 
   constructor() {
     super();
-    this.inquirer = inquirer.createPromptModule();
     this.webSocketModule = new WebSocketModule(8080);
     this.aiToolsModule = new AiToolsModule(this, this.toolRegistry);
 
@@ -224,17 +222,5 @@ export default class Chat extends RAG {
       this.aiToolsModule,
       this.context.isLLMInit
     );
-  }
-
-  // Get user input method
-  private async getUserInput(): Promise<string> {
-    const answers = await inquirer.prompt([
-      {
-        type: "input",
-        name: "userInput",
-        message: "Enter your input:",
-      },
-    ]);
-    return answers.userInput;
   }
 }

@@ -1,6 +1,8 @@
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ITool } from "../../modules/aiTools/AiTools";
-import NoteManagementPlugin, { INote } from "../../plugins/NoteManagement.plugin";
+import NoteManagementPlugin, {
+  INote,
+} from "../../plugins/NoteManagement.plugin";
 import Api, { ApiMethods } from "../../utils/Api";
 import logger from "../../utils/Logger";
 import ContentAI from "../content.RAG";
@@ -36,16 +38,14 @@ export default class ContentAiToolHandlers {
         );
       }
 
-      const prompt = `
-        Generate creative, user-focused, SEO-friendly content ideas for the topic:
-        ${topic}.
-        Keywords: ${keywords}.
-        Categorize ideas under "Education", "E-commerce", "Social Media", etc.
-      `;
-
       logger.info(`Generating content ideas for topic: ${topic}`);
-      const response = await this.ragInstance(prompt);
-
+      const generatedPrompt = this.ragInstance.generatePrompt([
+        new SystemMessage(
+          `${toolJson.toolName} tool invoked. Tool description: ${toolJson.toolDescription} - Rules to obey: ${toolJson.toolRules}`
+        ),
+        // new HumanMessage(`User input: ${userInput}`),
+      ]);
+      const response = await this.ragInstance.invokePrompt(generatedPrompt);
       logger.info("Generated content ideas successfully.");
       return response;
     } catch (error) {
@@ -61,22 +61,21 @@ export default class ContentAiToolHandlers {
    */
   public async handleContentProductionTool(userInput: string, toolJson: ITool) {
     try {
-      const { ideaId, wordCount, tone, style, language } = toolJson.toolArgs;
-
-      if (!ideaId) {
-        throw new Error("An idea ID must be provided for content production.");
-      }
-
-      const prompt = `
-        Using the selected content idea (ID: ${ideaId}), generate detailed content.
+      const { topic, wordCount, tone, style, language } = toolJson.toolArgs;
+      console.log("handling content production tool");
+      const systemPrompt = `
+        Generate detailed content about topic: ${topic}.
         Word Count: ${wordCount || "100"}.
         Tone: ${tone || "Neutral"}.
         Style: ${style || "General"}.
         Language: ${language || "en"}.
       `;
 
-      logger.info(`Producing content for idea ID: ${ideaId}`);
-      // const response = await this.ragInstance.generateText(prompt);
+      const generatedPrompt = this.ragInstance.generatePrompt([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(`User input: ${userInput}`),
+      ]);
+      const response = await this.ragInstance.invokePrompt(generatedPrompt);
 
       logger.info("Content produced successfully.");
       return response;

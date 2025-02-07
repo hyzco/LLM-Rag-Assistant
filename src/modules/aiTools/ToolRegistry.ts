@@ -6,7 +6,7 @@ export interface Registry {
   handler: (
     userInput: string,
     toolJson: ITool
-  ) => Promise<IterableReadableStream<string>> | Promise<string>;
+  ) => Promise<IterableReadableStream<string>>;
 }
 
 export interface IToolRegistry {
