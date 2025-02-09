@@ -12,8 +12,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@langchain/community": "^0.2.33",
-    "@langchain/core": "^0.2.36",
+    "@langchain/community": "^0.3.29",
+    "@langchain/core": "^0.3.39",
     "@langchain/ollama": "^0.1.5",
     "axios": "^1.7.2",
     "cassandra-driver": "^4.7.2",

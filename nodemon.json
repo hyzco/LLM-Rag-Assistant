@@ -1,4 +1,5 @@
 {
-"watch": ["src/*", "node_modules/**/*"],
-"exec": "tsx ./src/app.ts --env=development"
+  "watch": ["src"],
+  "ext": "ts",
+  "exec": "tsx ./src/app.ts --env=development"
 }

@@ -6,7 +6,7 @@ interface TranscribedData {
   chunks: any[]; // Adjust as per your actual data structure
 }
 
-interface WebSocketMessage {
+export interface WebSocketMessage {
   type: string;
   data: any;
 }
@@ -25,7 +25,7 @@ export default class WebSocketModule {
     this.port = port;
   }
 
-  public initializeWebSocket() {
+  public initializeWebSocket(handleWebSocketMessage?: any) {
     this.socket = new WebSocketServer({ port: this.port });
 
     this.socket.on("connection", (ws: WebSocket) => {
@@ -39,7 +39,15 @@ export default class WebSocketModule {
           const parsedMessage = JSON.parse(
             message.toString()
           ) as WebSocketMessage;
-          this.handleWebSocketMessage(parsedMessage, ws);
+          if (handleWebSocketMessage) {
+            this.handleWebSocketMessage(
+              parsedMessage,
+              ws,
+              handleWebSocketMessage
+            );
+          } else {
+            this.handleWebSocketMessage(parsedMessage, ws);
+          }
         } catch (error) {
           logger.error("WebSocket error parsing incoming message:", error);
         }
@@ -84,22 +92,31 @@ export default class WebSocketModule {
   }
 
   // Method to handle incoming WebSocket messages
-  private handleWebSocketMessage(message: WebSocketMessage, ws: WebSocket) {
-    switch (message.type) {
-      case "TRANSCRIBED_DATA":
-        this.handleTranscribedData(message.data);
-        break;
-      case "TRANSCRIBED_CHUNK":
-        this.handleTranscribedChunk(message.data);
-        break;
-      default:
-        logger.log("Unknown message type:", message.type);
+  private handleWebSocketMessage(
+    message: WebSocketMessage,
+    ws: WebSocket,
+    customCallback?: any
+  ) {
+    if (customCallback) {
+      customCallback(message);
+    } else {
+      switch (message.type) {
+        case "TRANSCRIBED_DATA":
+          this.handleTranscribedData(message.data);
+          break;
+        case "TRANSCRIBED_CHUNK":
+          this.handleTranscribedChunk(message.data);
+          break;
+        default:
+          logger.log("Unknown message type:", message.type);
+      }
     }
   }
 
   // Example function to handle full transcribed data
-  private handleTranscribedData(data: TranscribedData) {
-    throw new Error("Method is not implemented.");
+  private handleTranscribedData(data: string) {
+    logger.log("Received transcribed data:", data);
+    this.transcribedChunk = data;
     // Process full transcribed data as needed
   }
 

@@ -5,7 +5,7 @@ import {
   SystemMessage,
   BaseMessageChunk,
 } from "@langchain/core/messages";
-import { StringOutputParser } from "@langchain/core/output_parsers";
+import { JsonOutputParser, StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import AiTools, { ITool } from "./modules/aiTools/AiTools";
 import CassandraVectorDatabase from "./database/CassandraVectorDatabase";
@@ -82,6 +82,7 @@ export default class RAG {
     prompt: ChatPromptTemplate
   ): Promise<IterableReadableStream<string>> {
     try {
+
       let result = await prompt
         .pipe(this.chatModel)
         .pipe(new StringOutputParser())

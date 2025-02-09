@@ -5,7 +5,7 @@ import { IToolRegistry, Registry } from "./ToolRegistry";
 
 export default class AiToolsModule {
   protected ragInstance: Chat;
-  private toolRegistry: IToolRegistry;
+  private readonly toolRegistry: IToolRegistry;
 
   constructor(ragInstance: Chat, toolRegistry: IToolRegistry) {
     this.ragInstance = ragInstance;
@@ -29,7 +29,7 @@ export default class AiToolsModule {
       this.toolRegistry.getTool(toolName).tool as T
     )) as T;
 
-    const response = await this.getHandler(toolName)(userInput, toolJson);
+    const response = await this.getHandler(toolName)(toolJson, userInput);
     return response;
   }
 

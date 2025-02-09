@@ -4,8 +4,8 @@ import { ITool } from "./AiTools";
 export interface Registry {
   tool: ITool;
   handler: (
-    userInput: string,
-    toolJson: ITool
+    toolJson: ITool,
+    userInput?: string,
   ) => Promise<IterableReadableStream<string>>;
 }
 

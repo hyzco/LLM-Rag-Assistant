@@ -94,9 +94,13 @@ export default class AiTools<T extends ITool> {
     return toolNames;
   }
 
-  listRules() {
-    return this.rules
-      .map((rule, index) => `Rule nr ${index}: ${rule}`)
-      .join("\n");
+  listRules(rules: string[] = null) {
+    const createRules = (rules: string[]) =>
+      rules.map((rule, index) => `Rule nr ${index}: ${rule}`).join("\n");
+    if (rules) {
+      return createRules(rules);
+    } else {
+      return createRules(this.rules);
+    }
   }
 }
